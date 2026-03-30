@@ -1,0 +1,78 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: organxcell
+      POSTGRES_USER: organxcell
+      POSTGRES_PASSWORD: organxcell123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U organxcell"]
+      interval: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+
+  web:
+    build: .
+    restart: unless-stopped
+    command: daphne -b 0.0.0.0 -p 8000 organxcell.asgi:application
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: "False"
+      SECRET_KEY: "change-me-in-production-random-string-here"
+      DATABASE_URL: "postgres://organxcell:organxcell123@db:5432/organxcell"
+      REDIS_URL: "redis://redis:6379/0"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      ALLOWED_HOSTS: "*"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - media_files:/app/media
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: celery -A organxcell worker --loglevel=info --concurrency=2
+    environment:
+      DATABASE_URL: "postgres://organxcell:organxcell123@db:5432/organxcell"
+      REDIS_URL: "redis://redis:6379/0"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      SECRET_KEY: "change-me-in-production-random-string-here"
+    depends_on:
+      - db
+      - redis
+
+  beat:
+    build: .
+    restart: unless-stopped
+    command: celery -A organxcell beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      DATABASE_URL: "postgres://organxcell:organxcell123@db:5432/organxcell"
+      REDIS_URL: "redis://redis:6379/0"
+      SECRET_KEY: "change-me-in-production-random-string-here"
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:
+  media_files:

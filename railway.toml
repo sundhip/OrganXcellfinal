@@ -1,0 +1,14 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "daphne -b 0.0.0.0 -p $PORT organxcell.asgi:application"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "web"
+
+[[services]]
+name = "worker"
+startCommand = "celery -A organxcell worker --loglevel=info --concurrency=2"

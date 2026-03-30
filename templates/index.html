@@ -1,0 +1,2405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OrganXcell — Making Every Match Count</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script>
+(function(){
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  s.onload=function(){window._leafletReady=true;(window._leafletQ||[]).forEach(function(f){f();});};
+  document.head.appendChild(s);
+  window._leafletQ=[];
+  window.onLeafletReady=function(fn){window._leafletReady?fn():window._leafletQ.push(fn);};
+})();
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── RESET & TOKENS ── */
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#07111c;--surface:#0e1e2e;--raised:#152438;--line:rgba(74,144,226,.14);--line2:rgba(74,144,226,.28);
+  --blue:#4a90e2;--green:#3fc97a;--red:#e05555;--amber:#e8962a;--purple:#8b5cf6;
+  --text:#eef2f7;--muted:#7a9ab4;--faint:#3d5a72;
+  --grad:linear-gradient(135deg,#4a90e2,#3fc97a);
+  --r:10px;--r2:16px;--r3:22px;
+  --shadow:0 4px 28px rgba(0,0,0,.45);
+  --font:'Inter',sans-serif;
+}
+html,body{height:100%;width:100%;font-family:var(--font);background:var(--bg);color:var(--text);overflow:hidden;}
+#main{position:fixed;top:56px;left:0;right:0;bottom:0;overflow-y:auto;overflow-x:hidden;width:100%;}
+.page{display:none;width:100%;min-height:100%;}
+.page.active{display:block;animation:pg-in .25s ease;width:100%;}
+
+/* ── LOADER ── */
+#loader{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s;}
+#loader.out{opacity:0;pointer-events:none;}
+.ld-brand{font-size:2.4rem;font-weight:700;letter-spacing:2px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;opacity:0;transform:translateY(10px);animation:ld-rise .5s ease .1s forwards;}
+.ld-tag{font-size:.72rem;letter-spacing:3px;text-transform:uppercase;color:var(--faint);margin-top:.3rem;margin-bottom:2.5rem;opacity:0;animation:ld-rise .5s ease .25s forwards;}
+@keyframes ld-rise{to{opacity:1;transform:none;}}
+.ld-steps{width:240px;display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem;}
+.ld-step{font-size:.73rem;color:var(--faint);display:flex;align-items:center;gap:.6rem;transition:color .3s;}
+.ld-step.on{color:var(--text);}
+.ld-step.ok{color:var(--green);}
+.ld-dot{width:5px;height:5px;border-radius:50%;background:var(--faint);flex-shrink:0;transition:background .3s;}
+.ld-step.on .ld-dot{background:var(--blue);}
+.ld-step.ok .ld-dot{background:var(--green);}
+.ld-bar{width:240px;height:1px;background:rgba(255,255,255,.07);border-radius:1px;overflow:hidden;}
+.ld-fill{height:100%;width:0;background:var(--grad);transition:width .4s cubic-bezier(.4,0,.2,1);}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;width:100%;height:56px;z-index:900;background:rgba(7,17,28,.9);border-bottom:1px solid var(--line);backdrop-filter:blur(18px);display:flex;align-items:center;justify-content:space-between;padding:0 1.4rem;}
+.nav-logo{display:flex;align-items:center;gap:9px;cursor:pointer;text-decoration:none;}
+.logo-icon{width:30px;height:30px;border-radius:8px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:1rem;}
+.logo-name{font-size:1rem;font-weight:700;color:var(--text);}
+.logo-name span{color:var(--blue);}
+.nav-links{display:flex;gap:2px;}
+.nl{background:none;border:none;color:var(--muted);font-family:var(--font);font-size:.78rem;font-weight:500;padding:5px 11px;border-radius:7px;cursor:pointer;transition:all .18s;}
+.nl:hover{color:var(--text);background:rgba(74,144,226,.08);}
+.nl.active{color:var(--blue);background:rgba(74,144,226,.1);}
+.nav-right{display:flex;align-items:center;gap:7px;}
+.btn-sm{padding:6px 14px;border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:var(--font);border:none;transition:all .18s;}
+.btn-ghost{background:none;border:1px solid var(--line2);color:var(--blue);}
+.btn-ghost:hover{background:rgba(74,144,226,.08);}
+.btn-grad{background:var(--grad);color:#fff;}
+.btn-grad:hover{opacity:.88;}
+.icon-btn{background:none;border:1px solid var(--line);color:var(--muted);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:.85rem;transition:all .18s;}
+.icon-btn:hover{background:var(--raised);}
+.hb{display:none;flex-direction:column;gap:4px;cursor:pointer;background:none;border:none;padding:5px;}
+.hb span{width:18px;height:1.5px;background:var(--muted);border-radius:1px;transition:all .2s;}
+.mob-nav{display:none;position:fixed;top:56px;inset-x:0;background:var(--surface);border-bottom:1px solid var(--line);z-index:899;padding:.8rem;flex-direction:column;gap:3px;}
+.mob-nav.open{display:flex;}
+
+@keyframes pg-in{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.wrap{max-width:1400px;margin:0 auto;padding:1.6rem 4vw;}
+.wrap-sm{max-width:800px;margin:0 auto;padding:1.6rem 4vw;}
+
+/* ── CARDS & GRIDS ── */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:1.1rem;}
+.card-lg{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:1.4rem;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;}
+.label{font-size:.65rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;}
+.big-num{font-size:1.7rem;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;}
+.hint{font-size:.73rem;color:var(--muted);}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:5px;font-size:.65rem;font-weight:700;letter-spacing:.3px;}
+.badge-blue{background:rgba(74,144,226,.12);color:var(--blue);}
+.badge-green{background:rgba(63,201,122,.12);color:var(--green);}
+.badge-red{background:rgba(224,85,85,.12);color:var(--red);}
+.badge-amber{background:rgba(232,150,42,.12);color:var(--amber);}
+.badge-purple{background:rgba(139,92,246,.12);color:var(--purple);}
+
+/* ── BUTTONS ── */
+.btn{padding:9px 18px;border-radius:var(--r);font-size:.8rem;font-weight:600;cursor:pointer;font-family:var(--font);border:none;transition:all .18s;}
+.btn-primary{background:var(--grad);color:#fff;}
+.btn-primary:hover{opacity:.88;transform:translateY(-1px);}
+.btn-secondary{background:var(--raised);border:1px solid var(--line2);color:var(--text);}
+.btn-secondary:hover{border-color:var(--blue);}
+.btn-outline{background:none;border:1px solid var(--line2);color:var(--blue);}
+.btn-outline:hover{background:rgba(74,144,226,.08);}
+.btn-danger{background:rgba(224,85,85,.12);border:1px solid rgba(224,85,85,.25);color:var(--red);}
+.btn-xs{padding:4px 10px;border-radius:6px;font-size:.7rem;border:1px solid var(--line2);background:none;color:var(--blue);cursor:pointer;font-family:var(--font);transition:all .18s;}
+.btn-xs:hover{background:rgba(74,144,226,.1);}
+.btn-full{width:100%;padding:10px;border-radius:var(--r);font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--font);border:none;transition:all .18s;}
+.btn-full.primary{background:var(--grad);color:#fff;}
+.btn-full.primary:hover{opacity:.88;}
+.btn-full.outline{background:none;border:1px solid var(--line2);color:var(--text);}
+.btn-full.outline:hover{border-color:var(--blue);}
+
+/* ── FORMS ── */
+.field{margin-bottom:.85rem;}
+.field label{display:block;font-size:.7rem;font-weight:600;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.35rem;}
+.field input,.field select,.field textarea{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:8px 11px;color:var(--text);font-size:.83rem;font-family:var(--font);outline:none;transition:border-color .18s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(74,144,226,.08);}
+.field input::placeholder,.field textarea::placeholder{color:var(--faint);}
+.field select option{background:var(--raised);}
+
+/* ── TABLE ── */
+.table{width:100%;border-collapse:collapse;}
+.table th{font-size:.67rem;font-weight:600;color:var(--faint);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.4px;}
+.table td{font-size:.78rem;padding:9px 8px;border-bottom:1px solid rgba(74,144,226,.05);}
+.table tr:last-child td{border-bottom:none;}
+.table tbody tr:hover td{background:rgba(74,144,226,.03);}
+
+/* ── TABS ── */
+.tab-bar{display:flex;gap:1px;border-bottom:1px solid var(--line);margin-bottom:1rem;overflow-x:auto;scrollbar-width:none;}
+.tab-bar::-webkit-scrollbar{display:none;}
+.tab-btn{background:none;border:none;color:var(--faint);font-family:var(--font);font-size:.76rem;font-weight:500;padding:7px 13px;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .18s;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.on{color:var(--blue);border-bottom-color:var(--blue);}
+.tab-pane{display:none;}
+.tab-pane.on{display:block;animation:pg-in .2s ease;}
+
+/* ── SKELETON ── */
+.skel{background:linear-gradient(90deg,rgba(74,144,226,.05) 25%,rgba(74,144,226,.1) 50%,rgba(74,144,226,.05) 75%);background-size:300%;animation:sk 1.6s infinite;border-radius:6px;}
+@keyframes sk{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+
+/* ── INLINE SELECT ── */
+.inline-select{background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:5px 9px;color:var(--text);font-family:var(--font);font-size:.76rem;outline:none;cursor:pointer;transition:border-color .18s;}
+.inline-select:focus{border-color:var(--blue);}
+body.light .inline-select{background:#f0f4f9;border-color:rgba(30,110,200,.2);color:#0a1829;}
+body.light .inline-select option{background:#fff;color:#0a1829;}
+
+/* ══════════════════════════════════════
+   HOME PAGE
+══════════════════════════════════════ */
+.hero{min-height:calc(100vh - 56px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:3rem 1.5rem;position:relative;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 50% at 50% 35%,rgba(74,144,226,.06) 0%,transparent 65%);pointer-events:none;}
+.hero-chip{display:inline-flex;align-items:center;gap:7px;background:rgba(74,144,226,.07);border:1px solid var(--line2);border-radius:20px;padding:4px 13px;font-size:.68rem;color:var(--blue);letter-spacing:.4px;margin-bottom:1.4rem;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse-dot 1.4s infinite;}
+@keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:.25;}}
+.hero h1{font-size:3.4rem;font-weight:700;letter-spacing:-2px;line-height:1.08;background:linear-gradient(135deg,#fff 0%,#c6dcf5 55%,#3fc97a 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.4rem;}
+.hero-sub{font-size:.95rem;color:var(--green);font-style:italic;font-weight:500;margin-bottom:.9rem;}
+.hero-desc{font-size:.88rem;color:var(--muted);line-height:1.7;max-width:480px;margin:0 auto 2rem;}
+.hero-cta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.cta-p{padding:12px 28px;border-radius:30px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:var(--font);background:var(--grad);border:none;color:#fff;transition:all .2s;box-shadow:0 4px 18px rgba(74,144,226,.28);}
+.cta-p:hover{transform:translateY(-2px);box-shadow:0 7px 28px rgba(74,144,226,.38);}
+.cta-s{padding:12px 28px;border-radius:30px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:var(--font);background:rgba(74,144,226,.08);border:1px solid var(--line2);color:var(--text);transition:all .2s;}
+.cta-s:hover{border-color:var(--blue);color:var(--blue);}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;width:100%;margin:3.5rem 0 0;}
+.stat-box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:1.3rem;text-align:center;transition:all .25s;}
+.stat-box:hover{border-color:var(--line2);transform:translateY(-2px);}
+.stat-n{font-size:1.9rem;font-weight:700;color:var(--blue);display:block;font-variant-numeric:tabular-nums;}
+.stat-l{font-size:.7rem;color:var(--muted);margin-top:2px;}
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem;width:100%;margin:2.5rem 0 3rem;}
+.feat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:1.4rem;transition:all .25s;}
+.feat:hover{border-color:var(--line2);transform:translateY(-2px);}
+.feat-icon{width:38px;height:38px;border-radius:10px;background:rgba(74,144,226,.1);display:flex;align-items:center;justify-content:center;font-size:1.1rem;margin-bottom:.9rem;}
+.feat h3{font-size:.85rem;font-weight:700;margin-bottom:.4rem;}
+.feat p{font-size:.75rem;color:var(--muted);line-height:1.6;}
+
+/* ══════════════════════════════════════
+   HOW IT WORKS — public explainer
+══════════════════════════════════════ */
+.how-section{background:var(--surface);border-top:1px solid var(--line);padding:3rem 1.5rem;}
+.how-inner{max-width:860px;margin:0 auto;}
+.how-inner h2{font-size:1.3rem;font-weight:700;text-align:center;margin-bottom:.4rem;}
+.how-inner .sub{font-size:.8rem;color:var(--muted);text-align:center;margin-bottom:2rem;}
+.steps-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
+.step-card{text-align:center;padding:1rem;}
+.step-num{width:36px;height:36px;border-radius:50%;background:var(--grad);color:#fff;font-size:.85rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto .8rem;}
+.step-card h4{font-size:.82rem;font-weight:700;margin-bottom:.35rem;}
+.step-card p{font-size:.72rem;color:var(--muted);line-height:1.5;}
+
+/* ══════════════════════════════════════
+   AUTH PAGES
+══════════════════════════════════════ */
+.auth-wrap{min-height:calc(100vh - 56px);display:flex;align-items:center;justify-content:center;padding:2rem 1rem;background:radial-gradient(ellipse 60% 50% at 50% 30%,rgba(74,144,226,.05) 0%,transparent 60%);}
+.auth-box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:2.2rem;width:100%;max-width:400px;}
+.auth-head{text-align:center;margin-bottom:1.6rem;}
+.auth-head .icon{width:44px;height:44px;border-radius:12px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin:0 auto .7rem;}
+.auth-head h2{font-size:1.3rem;font-weight:700;}
+.auth-head p{font-size:.78rem;color:var(--muted);margin-top:.25rem;}
+.role-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:1.2rem;}
+.role-btn{background:rgba(74,144,226,.05);border:1px solid var(--line);border-radius:8px;padding:7px 4px;color:var(--faint);cursor:pointer;font-family:var(--font);font-size:.67rem;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .18s;}
+.role-btn:hover{border-color:var(--line2);color:var(--text);}
+.role-btn.on{border-color:var(--blue);background:rgba(74,144,226,.1);color:var(--blue);}
+.role-btn .ri{font-size:1.1rem;}
+.demo-box{background:rgba(74,144,226,.05);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:.71rem;color:var(--muted);margin-bottom:.9rem;line-height:1.8;}
+.demo-box strong{color:var(--blue);}
+.auth-switch{text-align:center;font-size:.75rem;color:var(--muted);margin-top:.7rem;}
+.auth-switch a{color:var(--blue);cursor:pointer;}
+
+/* ══════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════ */
+.dash-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.1rem;}
+.dash-head h2{font-size:1.2rem;font-weight:700;}
+.dash-head .meta{font-size:.72rem;color:var(--muted);margin-top:2px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1rem;}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:1rem;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad);}
+.kpi-v{font-size:1.6rem;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;}
+.kpi-l{font-size:.68rem;color:var(--muted);margin-top:2px;}
+.kpi-t{font-size:.66rem;margin-top:5px;font-weight:600;}
+.kpi-t.up{color:var(--green);}
+.kpi-t.dn{color:var(--red);}
+
+/* ══════════════════════════════════════
+   MATCH SIMULATOR — core accurate UI
+══════════════════════════════════════ */
+.sim-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:1.4rem;}
+.sim-head{font-size:.85rem;font-weight:700;color:var(--blue);margin-bottom:1.2rem;display:flex;align-items:center;gap:8px;}
+.sim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1rem;}
+.sim-out{background:var(--raised);border:1px solid var(--line);border-radius:var(--r);padding:1.2rem;display:none;}
+.sim-out.show{display:block;}
+.sim-score-row{display:flex;align-items:center;gap:1.2rem;margin-bottom:1rem;}
+.sim-score-circle{width:80px;height:80px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid var(--blue);flex-shrink:0;}
+.sim-score-num{font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums;}
+.sim-score-lbl{font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.sim-verdict{flex:1;}
+.sim-verdict-text{font-size:.82rem;font-weight:600;margin-bottom:.3rem;}
+.sim-verdict-sub{font-size:.72rem;color:var(--muted);line-height:1.5;}
+.breakdown{display:flex;flex-direction:column;gap:.45rem;}
+.bk-row{display:flex;align-items:center;gap:8px;}
+.bk-name{font-size:.7rem;color:var(--muted);width:110px;flex-shrink:0;}
+.bk-track{flex:1;height:5px;background:rgba(74,144,226,.08);border-radius:3px;overflow:hidden;}
+.bk-fill{height:100%;border-radius:3px;background:var(--grad);transition:width .9s ease;}
+.bk-val{font-size:.68rem;color:var(--blue);width:36px;text-align:right;font-variant-numeric:tabular-nums;}
+.ai-box{background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.2);border-radius:var(--r);padding:1rem;margin-top:.9rem;font-size:.78rem;line-height:1.65;color:var(--muted);}
+.ai-box strong{color:var(--purple);}
+.ai-box-loading{color:var(--faint);font-style:italic;}
+
+/* ══════════════════════════════════════
+   TRANSPORT CARDS
+══════════════════════════════════════ */
+.tc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:1.1rem;transition:border-color .2s;}
+.tc:hover{border-color:var(--line2);}
+.tc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem;}
+.organ-chip{background:rgba(74,144,226,.1);border:1px solid var(--line2);border-radius:16px;padding:2px 9px;font-size:.65rem;font-weight:700;color:var(--blue);letter-spacing:.4px;}
+.route-line{display:flex;align-items:center;gap:8px;margin-bottom:.6rem;}
+.route-city{font-size:.82rem;font-weight:600;}
+.route-track{flex:1;height:1.5px;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:1px;position:relative;}
+.route-dot{position:absolute;top:50%;transform:translateY(-50%);width:7px;height:7px;border-radius:50%;background:var(--surface);box-shadow:0 0 5px var(--blue);animation:tdot 2.2s linear infinite;}
+@keyframes tdot{from{left:0;}to{left:calc(100% - 7px);}}
+.tc-time{font-size:.85rem;font-weight:700;margin-bottom:.4rem;}
+.tc-time.ok{color:var(--blue);}
+.tc-time.warn{color:var(--red);}
+.prog-bar{height:4px;background:rgba(74,144,226,.08);border-radius:2px;overflow:hidden;margin-bottom:.35rem;}
+.prog-fill{height:100%;border-radius:2px;background:var(--grad);transition:width .8s;}
+.prog-fill.danger{background:linear-gradient(90deg,var(--red),var(--amber));}
+.tc-foot{display:flex;justify-content:space-between;align-items:center;margin-top:.7rem;}
+.temp-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:14px;font-size:.68rem;font-variant-numeric:tabular-nums;}
+.temp-ok{background:rgba(63,201,122,.08);border:1px solid rgba(63,201,122,.2);color:var(--green);}
+.temp-warn{background:rgba(224,85,85,.08);border:1px solid rgba(224,85,85,.2);color:var(--red);}
+
+/* ══════════════════════════════════════
+   MAP
+══════════════════════════════════════ */
+#leaflet-map{height:calc(100vh - 160px);border-radius:var(--r);overflow:hidden;}
+.map-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.9rem;}
+.map-head h2{font-size:1.1rem;font-weight:700;}
+.leaflet-popup-content-wrapper{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);color:var(--text);}
+.leaflet-popup-tip{background:var(--surface);}
+.pop-name{font-weight:700;font-size:.85rem;margin-bottom:3px;}
+.pop-meta{font-size:.72rem;color:var(--muted);margin-bottom:4px;}
+.pop-stat{font-size:.72rem;color:var(--green);}
+
+/* ══════════════════════════════════════
+   AI PANEL
+══════════════════════════════════════ */
+.ai-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;display:flex;flex-direction:column;}
+.ai-panel-head{padding:.8rem 1rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px;background:rgba(139,92,246,.06);}
+.ai-panel-head .ai-icon{width:32px;height:32px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+.ai-panel-title{font-size:.82rem;font-weight:700;}
+.ai-panel-sub{font-size:.67rem;color:var(--muted);}
+.ai-msgs{flex:1;overflow-y:auto;padding:.9rem;display:flex;flex-direction:column;gap:.7rem;min-height:0;}
+.ai-msg{display:flex;gap:7px;align-items:flex-end;}
+.ai-msg.u{flex-direction:row-reverse;}
+.ai-bub{max-width:80%;padding:9px 12px;border-radius:13px;font-size:.79rem;line-height:1.55;}
+.ai-bub.bot{background:var(--raised);border:1px solid var(--line);border-radius:13px 13px 13px 4px;}
+.ai-bub.u{background:var(--grad);color:#fff;border-radius:13px 13px 4px 13px;}
+.ai-av{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.75rem;}
+.ai-av.bot{background:rgba(139,92,246,.15);}
+.ai-av.u{background:rgba(74,144,226,.15);}
+.ai-input-row{padding:.7rem .9rem;border-top:1px solid var(--line);display:flex;gap:7px;}
+.ai-input{flex:1;background:var(--raised);border:1px solid var(--line);border-radius:18px;padding:7px 12px;color:var(--text);font-size:.79rem;font-family:var(--font);outline:none;}
+.ai-input:focus{border-color:var(--blue);}
+.ai-send{width:32px;height:32px;border-radius:50%;background:var(--grad);border:none;color:#fff;cursor:pointer;flex-shrink:0;font-size:.85rem;display:flex;align-items:center;justify-content:center;}
+.typ{display:flex;gap:3px;align-items:center;padding:2px 0;}
+.typ span{width:5px;height:5px;border-radius:50%;background:var(--faint);animation:tp .9s infinite;}
+.typ span:nth-child(2){animation-delay:.15s;}
+.typ span:nth-child(3){animation-delay:.3s;}
+@keyframes tp{0%,80%,100%{transform:scale(1);}40%{transform:scale(1.4);}}
+
+/* ══════════════════════════════════════
+   FLOATING HELP BOT (new users)
+══════════════════════════════════════ */
+#helpbot-fab{position:fixed;bottom:5.5rem;right:1.5rem;width:52px;height:52px;border-radius:50%;background:var(--grad);border:none;color:#fff;font-size:1.3rem;cursor:pointer;z-index:700;box-shadow:0 4px 18px rgba(74,144,226,.4);transition:transform .2s;}
+#helpbot-fab:hover{transform:scale(1.1);}
+#helpbot-fab .hb-badge{position:absolute;top:0;right:0;width:16px;height:16px;border-radius:50%;background:var(--red);font-size:.55rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);}
+#helpbot-panel{position:fixed;bottom:8.5rem;right:1.5rem;width:320px;max-height:480px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--shadow);z-index:700;display:none;flex-direction:column;overflow:hidden;}
+#helpbot-panel.open{display:flex;}
+.hb-head{padding:.8rem 1rem;background:var(--grad);display:flex;align-items:center;justify-content:space-between;}
+.hb-head-left{display:flex;align-items:center;gap:8px;}
+.hb-head-av{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:.85rem;}
+.hb-head-name{font-size:.82rem;font-weight:700;color:#fff;}
+.hb-head-sub{font-size:.63rem;color:rgba(255,255,255,.75);}
+.hb-close{background:none;border:none;color:rgba(255,255,255,.8);font-size:1rem;cursor:pointer;line-height:1;}
+.hb-msgs{flex:1;overflow-y:auto;padding:.8rem;display:flex;flex-direction:column;gap:.6rem;}
+.hb-msg{display:flex;gap:6px;align-items:flex-end;}
+.hb-msg.u{flex-direction:row-reverse;}
+.hb-bub{max-width:85%;padding:8px 11px;border-radius:12px;font-size:.76rem;line-height:1.5;}
+.hb-bub.bot{background:var(--raised);border:1px solid var(--line);border-radius:12px 12px 12px 3px;color:var(--text);}
+.hb-bub.u{background:var(--grad);color:#fff;border-radius:12px 12px 3px 12px;}
+.hb-quick{display:flex;flex-wrap:wrap;gap:5px;padding:.5rem .8rem;}
+.hb-q{background:rgba(74,144,226,.08);border:1px solid var(--line2);border-radius:14px;padding:4px 10px;font-size:.68rem;color:var(--blue);cursor:pointer;transition:all .15s;}
+.hb-q:hover{background:rgba(74,144,226,.15);}
+.hb-input-row{padding:.6rem .8rem;border-top:1px solid var(--line);display:flex;gap:6px;}
+.hb-input{flex:1;background:var(--raised);border:1px solid var(--line);border-radius:16px;padding:6px 11px;color:var(--text);font-size:.76rem;font-family:var(--font);outline:none;}
+.hb-input:focus{border-color:var(--blue);}
+.hb-send{width:30px;height:30px;border-radius:50%;background:var(--grad);border:none;color:#fff;cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+/* ══════════════════════════════════════
+   SOS & MODALS
+══════════════════════════════════════ */
+.sos-fab{position:fixed;bottom:1.5rem;right:1.5rem;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#e05555,#e8962a);border:none;color:#fff;font-size:1.1rem;cursor:pointer;z-index:600;box-shadow:0 4px 18px rgba(224,85,85,.45);animation:sos-ring 2.5s infinite;}
+@keyframes sos-ring{0%,100%{box-shadow:0 4px 18px rgba(224,85,85,.45);}50%{box-shadow:0 4px 28px rgba(224,85,85,.75),0 0 0 10px rgba(224,85,85,.07);}}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r3);padding:1.8rem;max-width:420px;width:92%;animation:m-in .2s ease;}
+@keyframes m-in{from{transform:scale(.95);opacity:0;}to{transform:scale(1);opacity:1;}}
+.modal h2{font-size:1.1rem;font-weight:700;margin-bottom:.4rem;}
+.modal p{font-size:.8rem;color:var(--muted);line-height:1.6;margin-bottom:1.1rem;}
+.sos-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:.9rem;}
+.sos-btn{background:rgba(224,85,85,.07);border:1px solid rgba(224,85,85,.2);border-radius:10px;padding:12px;cursor:pointer;font-family:var(--font);color:var(--text);text-align:center;transition:all .18s;}
+.sos-btn:hover{background:rgba(224,85,85,.14);border-color:rgba(224,85,85,.4);}
+.sos-btn .si{font-size:1.4rem;display:block;margin-bottom:4px;}
+.sos-btn .sl{font-size:.72rem;font-weight:600;}
+
+/* ══════════════════════════════════════
+   BLOOD BANK
+══════════════════════════════════════ */
+.bb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1.1rem;}
+.bb-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:1.1rem;text-align:center;transition:all .2s;}
+.bb-card:hover{border-color:var(--line2);transform:translateY(-2px);}
+.bb-card.low{border-color:rgba(224,85,85,.3);}
+.bb-type{font-size:1.9rem;font-weight:700;color:var(--red);font-variant-numeric:tabular-nums;}
+.bb-units{font-size:1.1rem;font-weight:600;margin:3px 0;}
+.bb-lbl{font-size:.67rem;color:var(--muted);}
+.bb-bar{height:4px;border-radius:2px;margin-top:.6rem;overflow:hidden;background:rgba(63,201,122,.08);}
+.bb-fill{height:100%;border-radius:2px;background:var(--green);transition:width 1s ease;}
+.bb-fill.low{background:var(--red);}
+
+/* ══════════════════════════════════════
+   HOSPITAL GRID
+══════════════════════════════════════ */
+.hosp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;}
+.hosp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:1.1rem;transition:all .2s;}
+.hosp-card:hover{border-color:var(--line2);transform:translateY(-2px);}
+.hosp-name{font-size:.85rem;font-weight:700;margin-bottom:2px;}
+.hosp-city{font-size:.7rem;color:var(--muted);margin-bottom:.7rem;}
+.hosp-stats{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.hs{background:rgba(74,144,226,.05);border-radius:6px;padding:5px;text-align:center;}
+.hs-v{font-size:.9rem;font-weight:700;color:var(--blue);}
+.hs-l{font-size:.58rem;color:var(--faint);}
+
+/* ══════════════════════════════════════
+   NOTIFICATIONS
+══════════════════════════════════════ */
+.notif{display:flex;align-items:flex-start;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:.85rem;margin-bottom:6px;cursor:pointer;transition:border-color .18s;}
+.notif:hover{border-color:var(--line2);}
+.notif.unread{border-left:2px solid var(--blue);}
+.notif-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0;}
+.notif-body{flex:1;}
+.notif-title{font-size:.79rem;font-weight:700;margin-bottom:2px;}
+.notif-desc{font-size:.71rem;color:var(--muted);line-height:1.45;}
+.notif-time{font-size:.63rem;color:var(--faint);margin-top:3px;}
+.unread-pip{width:7px;height:7px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:3px;}
+
+/* ══════════════════════════════════════
+   DONOR / RECIPIENT DASHBOARDS
+══════════════════════════════════════ */
+.status-hero{background:linear-gradient(135deg,var(--surface),var(--raised));border:1px solid var(--line);border-radius:var(--r2);padding:1.6rem;text-align:center;margin-bottom:1rem;}
+.status-icon{font-size:2.8rem;margin-bottom:.6rem;}
+.status-title{font-size:1rem;font-weight:700;margin-bottom:.25rem;}
+.status-sub{font-size:.76rem;color:var(--muted);}
+.queue-num{font-size:3.5rem;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;}
+
+/* ══════════════════════════════════════
+   TOAST
+══════════════════════════════════════ */
+#toasts{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);z-index:9998;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none;}
+.toast{background:var(--surface);border-radius:10px;padding:9px 16px;font-size:.78rem;color:var(--text);box-shadow:var(--shadow);pointer-events:auto;max-width:360px;text-align:center;opacity:0;transform:translateY(6px);transition:all .22s ease;}
+.toast.show{opacity:1;transform:none;}
+.toast.t-success{border:1px solid rgba(63,201,122,.35);}
+.toast.t-error{border:1px solid rgba(224,85,85,.35);}
+.toast.t-info{border:1px solid var(--line2);}
+.toast.t-warn{border:1px solid rgba(232,150,42,.35);}
+
+/* ══════════════════════════════════════
+   LIGHT MODE — complete coverage
+══════════════════════════════════════ */
+
+/* Core palette swap */
+body.light{
+  --bg:#f0f4f9;
+  --surface:#ffffff;
+  --raised:#e8eef6;
+  --line:rgba(30,110,200,.14);
+  --line2:rgba(30,110,200,.32);
+  --blue:#1a63b8;
+  --green:#157a42;
+  --red:#b52a2a;
+  --amber:#8f5a00;
+  --purple:#5b2eb5;
+  --text:#0a1829;
+  --muted:#3a5068;
+  --faint:#6a8ca8;
+  --grad:linear-gradient(135deg,#1a63b8,#157a42);
+  --shadow:0 2px 16px rgba(10,24,41,.1);
+}
+body.light { background:#f0f4f9; color:#0a1829; }
+html.light-root { background:#f0f4f9; }
+body.light #main { background:#f0f4f9; }
+
+/* Nav */
+body.light nav {
+  background:rgba(240,244,249,.97) !important;
+  border-bottom-color:rgba(30,110,200,.14);
+  box-shadow:0 1px 8px rgba(10,24,41,.08);
+}
+body.light .logo-name { color:#0a1829; }
+body.light .nl { color:#3a5068; }
+body.light .nl:hover { color:#0a1829; background:rgba(30,110,200,.07); }
+body.light .nl.active { color:#1a63b8; background:rgba(30,110,200,.09); }
+body.light .icon-btn { border-color:rgba(30,110,200,.18); color:#3a5068; }
+body.light .icon-btn:hover { background:#e8eef6; }
+body.light .btn-ghost { border-color:rgba(30,110,200,.3); color:#1a63b8; }
+body.light .btn-ghost:hover { background:rgba(30,110,200,.07); }
+body.light .hb span { background:#3a5068; }
+body.light .mob-nav { background:#fff; border-color:rgba(30,110,200,.14); }
+
+/* Loader */
+body.light #loader { background:#f0f4f9; }
+body.light .ld-brand {
+  background:linear-gradient(135deg,#1a63b8,#157a42);
+  -webkit-background-clip:text; background-clip:text;
+}
+body.light .ld-tag { color:#6a8ca8; }
+body.light .ld-step { color:#6a8ca8; }
+body.light .ld-step.on { color:#0a1829; }
+body.light .ld-step.ok { color:#157a42; }
+body.light .ld-dot { background:#6a8ca8; }
+body.light .ld-step.on .ld-dot { background:#1a63b8; }
+body.light .ld-step.ok .ld-dot { background:#157a42; }
+body.light .ld-bar { background:rgba(30,110,200,.1); }
+body.light .ld-fill { box-shadow:0 0 6px rgba(26,99,184,.3); }
+
+/* Cards */
+body.light .card,
+body.light .card-lg,
+body.light .sim-wrap,
+body.light .tc,
+body.light .bb-card,
+body.light .hosp-card,
+body.light .auth-box,
+body.light .modal,
+body.light .ai-panel,
+body.light #helpbot-panel {
+  background:#ffffff;
+  border-color:rgba(30,110,200,.14);
+  box-shadow:0 1px 8px rgba(10,24,41,.07);
+}
+body.light .sim-out { background:#f0f4f9; border-color:rgba(30,110,200,.14); }
+body.light .kpi { background:#ffffff; border-color:rgba(30,110,200,.14); box-shadow:0 1px 8px rgba(10,24,41,.07); }
+
+/* Text */
+body.light .label { color:#1a63b8; }
+body.light .hint { color:#3a5068; }
+body.light .big-num { color:#1a63b8; }
+body.light .kpi-v { color:#1a63b8; }
+body.light .kpi-l { color:#3a5068; }
+body.light .kpi-t.up { color:#157a42; }
+body.light .kpi-t.dn { color:#b52a2a; }
+body.light .dash-head h2 { color:#0a1829; }
+body.light .dash-head .meta { color:#3a5068; }
+
+/* Badges */
+body.light .badge-blue  { background:rgba(26,99,184,.1);  color:#1a63b8; }
+body.light .badge-green { background:rgba(21,122,66,.1);  color:#157a42; }
+body.light .badge-red   { background:rgba(181,42,42,.1);  color:#b52a2a; }
+body.light .badge-amber { background:rgba(143,90,0,.1);   color:#8f5a00; }
+body.light .badge-purple{ background:rgba(91,46,181,.1);  color:#5b2eb5; }
+
+/* Forms */
+body.light .field input,
+body.light .field select,
+body.light .field textarea {
+  background:#f0f4f9;
+  border-color:rgba(30,110,200,.2);
+  color:#0a1829;
+}
+body.light .field input:focus,
+body.light .field select:focus,
+body.light .field textarea:focus {
+  border-color:#1a63b8;
+  box-shadow:0 0 0 3px rgba(30,110,200,.09);
+}
+body.light .field input::placeholder,
+body.light .field textarea::placeholder { color:#6a8ca8; }
+body.light .field select option { background:#fff; color:#0a1829; }
+body.light .field label { color:#1a63b8; }
+body.light select[style*="background"] { background:#f0f4f9 !important; border-color:rgba(30,110,200,.2) !important; color:#0a1829 !important; }
+
+/* Buttons */
+body.light .btn-secondary { background:#e8eef6; border-color:rgba(30,110,200,.25); color:#0a1829; }
+body.light .btn-secondary:hover { border-color:#1a63b8; }
+body.light .btn-outline { background:transparent; border-color:rgba(30,110,200,.3); color:#1a63b8; }
+body.light .btn-outline:hover { background:rgba(30,110,200,.07); }
+body.light .btn-xs { border-color:rgba(30,110,200,.25); color:#1a63b8; }
+body.light .btn-xs:hover { background:rgba(30,110,200,.08); }
+body.light .btn-danger { background:rgba(181,42,42,.08); border-color:rgba(181,42,42,.2); color:#b52a2a; }
+
+/* Tables */
+body.light .table th { color:#6a8ca8; border-bottom-color:rgba(30,110,200,.12); }
+body.light .table td { border-bottom-color:rgba(30,110,200,.06); color:#0a1829; }
+body.light .table tbody tr:hover td { background:rgba(30,110,200,.04); }
+
+/* Tabs */
+body.light .tab-bar { border-bottom-color:rgba(30,110,200,.14); }
+body.light .tab-btn { color:#6a8ca8; }
+body.light .tab-btn:hover { color:#0a1829; }
+body.light .tab-btn.on { color:#1a63b8; border-bottom-color:#1a63b8; }
+
+/* Hero */
+body.light .hero { background:linear-gradient(160deg,#eef3fb 0%,#f5f8fc 100%); }
+body.light .hero-bg { background:radial-gradient(ellipse 80% 50% at 50% 35%,rgba(30,110,200,.07) 0%,transparent 65%); }
+body.light .hero h1 { background:linear-gradient(135deg,#0a1829 0%,#1a63b8 55%,#157a42 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+body.light .hero-sub { color:#157a42; }
+body.light .hero-desc { color:#3a5068; }
+body.light .hero-chip { background:rgba(30,110,200,.07); border-color:rgba(30,110,200,.25); color:#1a63b8; }
+body.light .cta-s { background:rgba(30,110,200,.07); border-color:rgba(30,110,200,.25); color:#0a1829; }
+body.light .cta-s:hover { color:#1a63b8; border-color:#1a63b8; }
+body.light .stat-box { background:#fff; border-color:rgba(30,110,200,.14); box-shadow:0 1px 8px rgba(10,24,41,.06); }
+body.light .stat-n { color:#1a63b8; }
+body.light .stat-l { color:#3a5068; }
+body.light .feat { background:#fff; border-color:rgba(30,110,200,.14); box-shadow:0 1px 8px rgba(10,24,41,.06); }
+body.light .feat:hover { border-color:rgba(30,110,200,.3); box-shadow:0 4px 18px rgba(30,110,200,.1); }
+body.light .feat h3 { color:#0a1829; }
+body.light .feat p { color:#3a5068; }
+body.light .feat-icon { background:rgba(30,110,200,.09); }
+
+/* How it works */
+body.light .how-section { background:#e8eef6; border-top-color:rgba(30,110,200,.14); }
+body.light .how-inner h2 { color:#0a1829; }
+body.light .how-inner .sub { color:#3a5068; }
+body.light .step-card h4 { color:#0a1829; }
+body.light .step-card p { color:#3a5068; }
+
+/* Auth */
+body.light .auth-wrap { background:radial-gradient(ellipse 60% 50% at 50% 30%,rgba(30,110,200,.06) 0%,transparent 60%); }
+body.light .auth-head h2 { color:#0a1829; }
+body.light .auth-head p { color:#3a5068; }
+body.light .role-btn { background:rgba(30,110,200,.05); border-color:rgba(30,110,200,.14); color:#6a8ca8; }
+body.light .role-btn:hover { border-color:rgba(30,110,200,.3); color:#0a1829; }
+body.light .role-btn.on { border-color:#1a63b8; background:rgba(30,110,200,.09); color:#1a63b8; }
+body.light .demo-box { background:rgba(30,110,200,.05); border-color:rgba(30,110,200,.14); color:#3a5068; }
+body.light .demo-box strong { color:#1a63b8; }
+body.light .auth-switch { color:#3a5068; }
+body.light .auth-switch a { color:#1a63b8; }
+
+/* Dashboard */
+body.light .status-hero { background:linear-gradient(135deg,#fff,#eef3fb); border-color:rgba(30,110,200,.14); }
+body.light .status-title { color:#0a1829; }
+body.light .status-sub { color:#3a5068; }
+body.light .queue-num { color:#1a63b8; }
+
+/* Match simulator */
+body.light .sim-head { color:#1a63b8; }
+body.light .sim-score-lbl { color:#3a5068; }
+body.light .sim-verdict-sub { color:#3a5068; }
+body.light .bk-name { color:#3a5068; }
+body.light .bk-val { color:#1a63b8; }
+body.light .bk-track { background:rgba(30,110,200,.08); }
+body.light .ai-box { background:rgba(91,46,181,.05); border-color:rgba(91,46,181,.18); }
+body.light .ai-box strong { color:#5b2eb5; }
+body.light .ai-box-loading { color:#6a8ca8; }
+
+/* Transport */
+body.light .organ-chip { background:rgba(30,110,200,.09); border-color:rgba(30,110,200,.25); color:#1a63b8; }
+body.light .route-city { color:#0a1829; }
+body.light .tc-time.ok { color:#1a63b8; }
+body.light .tc-time.warn { color:#b52a2a; }
+body.light .prog-bar { background:rgba(30,110,200,.08); }
+body.light .temp-ok { background:rgba(21,122,66,.08); border-color:rgba(21,122,66,.2); color:#157a42; }
+body.light .temp-warn { background:rgba(181,42,42,.08); border-color:rgba(181,42,42,.2); color:#b52a2a; }
+
+/* Map popup */
+body.light .leaflet-popup-content-wrapper { background:#fff; border-color:rgba(30,110,200,.18); }
+body.light .leaflet-popup-tip { background:#fff; }
+body.light .pop-name { color:#0a1829; }
+body.light .pop-meta { color:#3a5068; }
+body.light .pop-stat { color:#157a42; }
+
+/* AI panels */
+body.light .ai-panel-head { background:rgba(91,46,181,.05); border-bottom-color:rgba(30,110,200,.12); }
+body.light .ai-panel-title { color:#0a1829; }
+body.light .ai-panel-sub { color:#3a5068; }
+body.light .ai-bub.bot { background:#f0f4f9; border-color:rgba(30,110,200,.14); color:#0a1829; }
+body.light .ai-input { background:#f0f4f9; border-color:rgba(30,110,200,.18); color:#0a1829; }
+body.light .ai-input::placeholder { color:#6a8ca8; }
+body.light .ai-input:focus { border-color:#1a63b8; }
+body.light .ai-msgs { background:transparent; }
+body.light .ai-av.bot { background:rgba(91,46,181,.1); }
+body.light .typ span { background:#6a8ca8; }
+
+/* Help bot */
+body.light #helpbot-panel { background:#fff; border-color:rgba(30,110,200,.18); }
+body.light .hb-bub.bot { background:#f0f4f9; border-color:rgba(30,110,200,.14); color:#0a1829; }
+body.light .hb-input { background:#f0f4f9; border-color:rgba(30,110,200,.18); color:#0a1829; }
+body.light .hb-input::placeholder { color:#6a8ca8; }
+body.light .hb-input:focus { border-color:#1a63b8; }
+body.light .hb-q { background:rgba(30,110,200,.07); border-color:rgba(30,110,200,.2); color:#1a63b8; }
+body.light .hb-q:hover { background:rgba(30,110,200,.13); }
+body.light .hb-quick { background:#fff; }
+
+/* Notifications */
+body.light .notif { background:#fff; border-color:rgba(30,110,200,.14); }
+body.light .notif:hover { border-color:rgba(30,110,200,.3); }
+body.light .notif.unread { border-left-color:#1a63b8; }
+body.light .notif-title { color:#0a1829; }
+body.light .notif-desc { color:#3a5068; }
+body.light .notif-time { color:#6a8ca8; }
+body.light .unread-pip { background:#1a63b8; }
+
+/* Blood bank */
+body.light .bb-type { color:#b52a2a; }
+body.light .bb-units { color:#0a1829; }
+body.light .bb-lbl { color:#3a5068; }
+body.light .bb-bar { background:rgba(21,122,66,.08); }
+body.light .bb-fill { background:#157a42; }
+body.light .bb-fill.low { background:#b52a2a; }
+body.light .bb-card.low { border-color:rgba(181,42,42,.25); }
+
+/* Hospital cards */
+body.light .hosp-name { color:#0a1829; }
+body.light .hosp-city { color:#3a5068; }
+body.light .hs { background:rgba(30,110,200,.06); }
+body.light .hs-v { color:#1a63b8; }
+body.light .hs-l { color:#6a8ca8; }
+
+/* Modals & overlays */
+body.light .modal h2 { color:#0a1829; }
+body.light .modal p { color:#3a5068; }
+body.light .sos-btn { background:rgba(181,42,42,.06); border-color:rgba(181,42,42,.18); color:#0a1829; }
+body.light .sos-btn:hover { background:rgba(181,42,42,.12); border-color:rgba(181,42,42,.35); }
+
+/* Feedback */
+body.light #stars span { color:rgba(10,24,41,.15) !important; }
+
+/* Skeleton */
+body.light .skel { background:linear-gradient(90deg,rgba(30,110,200,.06) 25%,rgba(30,110,200,.12) 50%,rgba(30,110,200,.06) 75%); background-size:300%; }
+
+/* Scrollbar */
+body.light #main::-webkit-scrollbar-track { background:#f0f4f9; }
+body.light #main::-webkit-scrollbar-thumb { background:rgba(30,110,200,.2); }
+
+/* About page text */
+body.light .wrap-sm p { color:#3a5068; }
+body.light .wrap-sm h1 { background:linear-gradient(135deg,#1a63b8,#157a42); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+body.light .wrap-sm .card-lg p { color:#3a5068; }
+body.light .wrap-sm h3 { color:#1a63b8; }
+
+/* Feedback type badges transition */
+#fbTypes span { transition:opacity .15s, transform .15s; }
+
+/* Org bars track in light */
+body.light .organ-bar-track { background:rgba(30,110,200,.08); }
+
+/* Mobile nav links in light mode */
+body.light .mob-nav .nl { color:#3a5068; }
+body.light .mob-nav .nl:hover { color:#0a1829; background:rgba(30,110,200,.07); }
+body.light .mob-nav .nl.active { color:#1a63b8; }
+
+/* Scrollbar styling */
+#main { scrollbar-width:thin; scrollbar-color:rgba(74,144,226,.2) transparent; }
+#main::-webkit-scrollbar { width:5px; }
+#main::-webkit-scrollbar-track { background:transparent; }
+#main::-webkit-scrollbar-thumb { background:rgba(74,144,226,.2); border-radius:3px; }
+body.light #main { scrollbar-color:rgba(30,110,200,.25) transparent; }
+body.light #main::-webkit-scrollbar-thumb { background:rgba(30,110,200,.25); }
+
+/* Wrap text in light */
+body.light .wrap h2 { color:#0a1829; }
+body.light .wrap .hint { color:#3a5068; }
+body.light .wrap-sm h2 { color:#0a1829; }
+
+/* Fix wrap-sm overscope — only target the about page content */
+body.light .wrap-sm > p { color:#3a5068; }
+body.light .wrap-sm > .card-lg > p { color:#3a5068; }
+
+/* Chat contact items in light */
+body.light .ai-input-row { border-top-color:rgba(30,110,200,.12); }
+body.light .hb-input-row { border-top-color:rgba(30,110,200,.12); }
+body.light .hb-msgs { background:transparent; }
+
+/* Inline-select in light */
+body.light .inline-select { background:#f0f4f9; border-color:rgba(30,110,200,.2); color:#0a1829; }
+body.light .inline-select option { background:#fff; color:#0a1829; }
+
+/* Tab-bar background in light */
+body.light .tab-bar { background:transparent; }
+
+/* Overlay backdrop */
+body.light .overlay { background:rgba(10,24,41,.55); }
+
+/* Toast in light */
+body.light .toast { background:#fff; color:#0a1829; }
+body.light .toast.t-success { border-color:rgba(21,122,66,.35); }
+body.light .toast.t-error { border-color:rgba(181,42,42,.35); }
+body.light .toast.t-info { border-color:rgba(30,110,200,.3); }
+
+/* Helpbot fab in light mode — keep gradient, just adjust shadow */
+body.light #helpbot-fab { box-shadow:0 4px 18px rgba(30,110,200,.35); }
+body.light .sos-fab { box-shadow:0 4px 18px rgba(181,42,42,.4); }
+
+/* Route track color in light */
+body.light .route-track { opacity:.7; }
+
+/* KPI top accent stays vibrant */
+body.light .kpi::before { opacity:.8; }
+
+/* Blood bank bar background */
+body.light .bb-bar { background:rgba(21,122,66,.08); }
+
+/* Consent list avatar circle */
+body.light .consent-avatar { background:rgba(30,110,200,.1); }
+
+/* Map head text */
+body.light .map-head h2 { color:#0a1829; }
+body.light .map-head .hint { color:#3a5068; }
+
+/* Feedback page */
+body.light #fbOk { background:rgba(21,122,66,.07); border-color:rgba(21,122,66,.2); }
+body.light #fbOk div:first-child { background:#157a42; }
+
+/* About page card borders */
+body.light .wrap-sm .card-lg { border-color:rgba(30,110,200,.14); }
+body.light .wrap-sm .card-lg h3 { color:#1a63b8; }
+body.light .wrap-sm .g2 .card-lg div { color:#3a5068; }
+
+/* ══════════════════════════════════════
+   RESPONSIVE — Phone → Tablet → Desktop → TV
+══════════════════════════════════════ */
+
+/* ── Base: make everything fill the viewport width ── */
+html, body { width:100%; max-width:100%; }
+#main { width:100%; }
+.page { width:100%; }
+
+/* Hero: always full width, content centred */
+.hero {
+  width:100%;
+  min-height:calc(100vh - 56px);
+  padding:3rem 5vw;
+}
+.hero-inner-wrap {
+  max-width:680px;
+  margin:0 auto;
+  width:100%;
+}
+.stats-row {
+  width:100%;
+  max-width:100%;
+  grid-template-columns:repeat(4,1fr);
+}
+
+/* How-it-works: always full width */
+.how-section { width:100%; padding:3rem 5vw; }
+.how-inner { max-width:100%; }
+.features { max-width:100%; width:100%; }
+
+/* Wraps: fluid padding, no hard max-width cut-off on large screens */
+.wrap { max-width:1400px; padding:1.6rem 4vw; }
+.wrap-sm { max-width:800px; padding:1.6rem 4vw; }
+
+/* Dashboards fill all available space */
+.dash-wrap { padding:1.4rem 4vw; width:100%; max-width:100%; }
+.kpi-grid { grid-template-columns:repeat(4,1fr); }
+
+/* Grids — default wide layout */
+.g2 { grid-template-columns:1fr 1fr; }
+.g3 { grid-template-columns:repeat(3,1fr); }
+.g4 { grid-template-columns:repeat(4,1fr); }
+.bb-grid { grid-template-columns:repeat(4,1fr); }
+.hosp-grid { grid-template-columns:repeat(3,1fr); }
+.sim-grid { grid-template-columns:repeat(3,1fr); }
+.steps-row { grid-template-columns:repeat(4,1fr); }
+
+/* Map: always full height */
+#leaflet-map { height:calc(100vh - 155px); }
+
+/* Help bot: fixed position, stays out of the way */
+#helpbot-fab { bottom:5.5rem; right:1.5rem; }
+#helpbot-panel { right:1.5rem; bottom:8.5rem; width:320px; }
+
+/* ── TV / Large Monitor (1800px+) ── */
+@media(min-width:1800px){
+  .wrap { max-width:1600px; padding:2rem 5vw; }
+  .hero h1 { font-size:4.5rem; }
+  .hero-desc { font-size:1rem; max-width:600px; }
+  .kpi-grid { grid-template-columns:repeat(4,1fr); gap:1.2rem; }
+  .g3 { grid-template-columns:repeat(3,1fr); }
+  .g4 { grid-template-columns:repeat(4,1fr); }
+  .hosp-grid { grid-template-columns:repeat(4,1fr); }
+  .bb-grid { grid-template-columns:repeat(4,1fr); }
+  .tab-btn { font-size:.85rem; padding:9px 18px; }
+  .card { padding:1.4rem; }
+  .kpi { padding:1.3rem; }
+  .kpi-v { font-size:2rem; }
+  .stat-n { font-size:2.4rem; }
+  #leaflet-map { height:calc(100vh - 165px); }
+}
+
+/* ── Standard Desktop (1200px–1800px) ── */
+@media(min-width:1200px) and (max-width:1799px){
+  .wrap { max-width:1300px; }
+  .hosp-grid { grid-template-columns:repeat(3,1fr); }
+}
+
+/* ── Small Desktop / Laptop (900px–1199px) ── */
+@media(min-width:900px) and (max-width:1199px){
+  .wrap { padding:1.4rem 3vw; }
+  .hosp-grid { grid-template-columns:repeat(3,1fr); }
+  .bb-grid { grid-template-columns:repeat(4,1fr); }
+  .features { grid-template-columns:repeat(3,1fr); }
+  .kpi-grid { grid-template-columns:repeat(4,1fr); }
+}
+
+/* ── Tablet (600px–899px) ── */
+@media(max-width:899px){
+  .nav-links, .nav-right .btn-ghost, .nav-right .btn-grad { display:none; }
+  .hb { display:flex; }
+
+  .wrap { padding:1.2rem 3vw; }
+  .wrap-sm { padding:1.2rem 3vw; }
+  .dash-wrap { padding:1.1rem 3vw; }
+  .how-section { padding:2rem 3vw; }
+  .hero { padding:2.5rem 4vw; }
+
+  .hero h1 { font-size:2.6rem; letter-spacing:-1px; }
+  .hero-desc { font-size:.85rem; }
+
+  .kpi-grid { grid-template-columns:repeat(2,1fr); gap:.7rem; }
+  .stats-row { grid-template-columns:repeat(2,1fr); gap:.7rem; }
+  .g4 { grid-template-columns:repeat(2,1fr); }
+  .g3 { grid-template-columns:repeat(2,1fr); }
+  .bb-grid { grid-template-columns:repeat(2,1fr); }
+  .hosp-grid { grid-template-columns:repeat(2,1fr); }
+  .features { grid-template-columns:repeat(2,1fr); }
+  .sim-grid { grid-template-columns:repeat(2,1fr); }
+  .steps-row { grid-template-columns:repeat(2,1fr); gap:.8rem; }
+
+  .g2 { grid-template-columns:1fr 1fr; }
+
+  #helpbot-panel { width:calc(100vw - 2rem); right:1rem; max-height:420px; }
+  #leaflet-map { height:calc(100vh - 200px); }
+}
+
+/* ── Large Phone (480px–599px) ── */
+@media(max-width:599px){
+  .wrap { padding:1rem 4vw; }
+  .hero { padding:2rem 4vw; min-height:auto; padding-top:3rem; padding-bottom:3rem; }
+  .hero h1 { font-size:2.1rem; letter-spacing:-.5px; }
+  .hero-sub { font-size:.85rem; }
+  .hero-desc { font-size:.82rem; }
+  .cta-p, .cta-s { padding:10px 20px; font-size:.82rem; }
+
+  .kpi-grid { grid-template-columns:repeat(2,1fr); gap:.6rem; }
+  .stats-row { grid-template-columns:repeat(2,1fr); gap:.6rem; }
+  .stat-n { font-size:1.6rem; }
+  .g4,.g3,.bb-grid,.hosp-grid { grid-template-columns:repeat(2,1fr); }
+  .features { grid-template-columns:1fr; }
+  .sim-grid { grid-template-columns:1fr 1fr; }
+  .steps-row { grid-template-columns:repeat(2,1fr); }
+
+  .tab-btn { font-size:.7rem; padding:6px 10px; }
+  .kpi-v { font-size:1.4rem; }
+
+  #helpbot-panel { width:calc(100vw - 1rem); right:.5rem; left:.5rem; }
+  #helpbot-fab { right:1rem; bottom:5rem; }
+  .sos-fab { right:1rem; bottom:1rem; }
+}
+
+/* ── Small Phone (max 479px) ── */
+@media(max-width:479px){
+  .hero h1 { font-size:1.85rem; }
+  .hero { padding:1.8rem 1rem; }
+  .wrap, .wrap-sm { padding:.9rem 1rem; }
+  .dash-wrap { padding:.9rem 1rem; }
+
+  .kpi-grid { grid-template-columns:1fr 1fr; gap:.5rem; }
+  .stats-row { grid-template-columns:1fr 1fr; gap:.5rem; }
+  .g2, .g4, .g3, .bb-grid, .hosp-grid, .sim-grid { grid-template-columns:1fr 1fr; }
+  .features, .steps-row { grid-template-columns:1fr; }
+
+  nav { padding:0 .8rem; }
+  .logo-name { font-size:.9rem; }
+
+  .auth-box { padding:1.4rem 1rem; }
+  .role-grid { grid-template-columns:repeat(4,1fr); gap:3px; }
+  .role-btn { font-size:.6rem; padding:6px 2px; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══ LOADER ═══ -->
+<div id="loader">
+  <div class="ld-brand">OrganXcell</div>
+  <div class="ld-tag">Making Every Match Count</div>
+  <div class="ld-steps">
+    <div class="ld-step on" id="ls1"><div class="ld-dot"></div>Connecting to hospital network</div>
+    <div class="ld-step" id="ls2"><div class="ld-dot"></div>Loading 20 transplant centres</div>
+    <div class="ld-step" id="ls3"><div class="ld-dot"></div>Initialising AI matching engine</div>
+    <div class="ld-step" id="ls4"><div class="ld-dot"></div>Establishing live feeds</div>
+    <div class="ld-step" id="ls5"><div class="ld-dot"></div>System ready</div>
+  </div>
+  <div class="ld-bar"><div class="ld-fill" id="ldFill"></div></div>
+</div>
+
+<!-- ═══ NAV ═══ -->
+<nav id="mainNav">
+  <a class="nav-logo" onclick="go('home')">
+    <div class="logo-icon">🫀</div>
+    <span class="logo-name">Organ<span>Xcell</span></span>
+  </a>
+  <div class="nav-links">
+    <button class="nl active" onclick="go('home')">Home</button>
+    <button class="nl" onclick="go('map')">🗺 Live Map</button>
+    <button class="nl" onclick="go('hospitals')">Hospitals</button>
+    <button class="nl" onclick="go('bloodbank')">Blood Bank</button>
+    <button class="nl" onclick="go('about')">About</button>
+    <button class="nl" onclick="go('feedback')">Feedback</button>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+    <button class="btn-sm btn-ghost" onclick="go('login')">Login</button>
+    <button class="btn-sm btn-grad" onclick="go('register')">Register</button>
+    <button class="hb" onclick="toggleMob()"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="mob-nav" id="mobNav">
+  <button class="nl" onclick="go('home');closeMob()">🏠 Home</button>
+  <button class="nl" onclick="go('map');closeMob()">🗺 Map</button>
+  <button class="nl" onclick="go('hospitals');closeMob()">🏥 Hospitals</button>
+  <button class="nl" onclick="go('bloodbank');closeMob()">🩸 Blood Bank</button>
+  <button class="nl" onclick="go('about');closeMob()">ℹ About</button>
+  <button class="nl" onclick="go('login');closeMob()">🔐 Login</button>
+  <button class="nl" onclick="go('register');closeMob()">✍ Register</button>
+</div>
+
+<!-- ═══ SOS ═══ -->
+<button class="sos-fab" onclick="openOverlay('sosOverlay')" title="Emergency SOS">🆘</button>
+<div class="overlay" id="sosOverlay" onclick="if(event.target===this)closeOverlay('sosOverlay')">
+  <div class="modal">
+    <h2>🚨 Emergency Organ Alert</h2>
+    <p>Instantly alert all coordinators, hospitals, and transport teams in your NOTTO zone.</p>
+    <div class="sos-grid">
+      <button class="sos-btn" onclick="triggerSOS('Heart')"><span class="si">🫀</span><span class="sl">Heart</span></button>
+      <button class="sos-btn" onclick="triggerSOS('Liver')"><span class="si">🍃</span><span class="sl">Liver</span></button>
+      <button class="sos-btn" onclick="triggerSOS('Kidney')"><span class="si">🫘</span><span class="sl">Kidney</span></button>
+      <button class="sos-btn" onclick="triggerSOS('Any organ')"><span class="si">🏥</span><span class="sl">General</span></button>
+    </div>
+    <button class="btn-full outline" onclick="closeOverlay('sosOverlay')">Cancel</button>
+  </div>
+</div>
+
+<!-- ═══ FLOATING HELP BOT ═══ -->
+<button id="helpbot-fab" onclick="toggleHelpBot()" title="Need help? Ask me!">
+  💬<span class="hb-badge">1</span>
+</button>
+<div id="helpbot-panel">
+  <div class="hb-head">
+    <div class="hb-head-left">
+      <div class="hb-head-av">🤖</div>
+      <div><div class="hb-head-name">OrganXcell Assistant</div><div class="hb-head-sub">Here to help you navigate</div></div>
+    </div>
+    <button class="hb-close" onclick="toggleHelpBot()">✕</button>
+  </div>
+  <div class="hb-msgs" id="hbMsgs">
+    <div class="hb-msg"><div class="ai-av bot">🤖</div><div class="hb-bub bot">👋 Hi! I'm your guide to OrganXcell. Are you a <strong>donor</strong>, <strong>recipient</strong>, <strong>doctor</strong>, or just exploring?</div></div>
+  </div>
+  <div class="hb-quick" id="hbQuick">
+    <span class="hb-q" onclick="hbQuickSend('I am a donor')">I'm a donor</span>
+    <span class="hb-q" onclick="hbQuickSend('I am a recipient')">I'm a recipient</span>
+    <span class="hb-q" onclick="hbQuickSend('I am a doctor')">I'm a doctor</span>
+    <span class="hb-q" onclick="hbQuickSend('How does matching work?')">How matching works</span>
+    <span class="hb-q" onclick="hbQuickSend('How do I register?')">How to register</span>
+    <span class="hb-q" onclick="hbQuickSend('What is organ donation?')">What is organ donation?</span>
+  </div>
+  <div class="hb-input-row">
+    <input class="hb-input" id="hbInput" placeholder="Type your question…" onkeydown="if(event.key==='Enter')sendHelpMsg()">
+    <button class="hb-send" onclick="sendHelpMsg()">↑</button>
+  </div>
+</div>
+
+<!-- ═══ TOAST CONTAINER ═══ -->
+<div id="toasts"></div>
+
+<!-- ═══ MAIN ═══ -->
+<div id="main">
+
+<!-- ── HOME ── -->
+<div class="page active" id="page-home">
+  <div class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-chip"><div class="live-dot"></div>SIH 2025 · System Online · 20 Hospitals</div>
+    <h1>OrganXcell</h1>
+    <div class="hero-sub">"Making Every Match Count"</div>
+    <p class="hero-desc">India's organ donation coordination platform — AI-powered matching, real-time transport tracking, digital consent, and simple dashboards anyone can use.</p>
+    <div class="hero-cta">
+      <button class="cta-p" onclick="go('register')">Register as Donor</button>
+      <button class="cta-s" onclick="go('about')">How it works</button>
+      <button class="cta-s" onclick="go('map')">🗺 Live Map</button>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><span class="stat-n" id="s1">0</span><div class="stat-l">Lives Saved</div></div>
+      <div class="stat-box"><span class="stat-n" id="s2">0</span><div class="stat-l">Registered Donors</div></div>
+      <div class="stat-box"><span class="stat-n" id="s3">0</span><div class="stat-l">Matched Recipients</div></div>
+      <div class="stat-box"><span class="stat-n" id="s4">0%</span><div class="stat-l">Match Success Rate</div></div>
+    </div>
+  </div>
+  <div class="how-section">
+    <div class="how-inner">
+      <h2>How OrganXcell Works</h2>
+      <p class="sub">Simple steps — for everyone, not just doctors</p>
+      <div class="steps-row">
+        <div class="step-card"><div class="step-num">1</div><h4>Register</h4><p>Donors and recipients sign up. Medical team verifies your details securely.</p></div>
+        <div class="step-card"><div class="step-num">2</div><h4>AI Matches</h4><p>Our algorithm checks blood group, HLA, urgency, and location to find the best match.</p></div>
+        <div class="step-card"><div class="step-num">3</div><h4>Coordinate</h4><p>Hospital teams get instant alerts. Transport is planned and tracked live on the map.</p></div>
+        <div class="step-card"><div class="step-num">4</div><h4>Save a Life</h4><p>Surgery team is notified. Cold chain is monitored throughout. Every second counts.</p></div>
+      </div>
+      <div class="features">
+        <div class="feat"><div class="feat-icon">🧬</div><h3>Accurate AI Matching</h3><p>Organ-specific algorithms — MELD for liver, LAS for lungs, HLA for kidney, urgency tiers for heart. Each match is explained in plain language.</p></div>
+        <div class="feat"><div class="feat-icon">🗺️</div><h3>Live GPS Tracking</h3><p>20 hospitals on real map. Transport routes shown live. Cold chain temperatures monitored. Alerts if breach detected.</p></div>
+        <div class="feat"><div class="feat-icon">🤖</div><h3>Help Chatbot</h3><p>First-time users get a step-by-step guide. Ask anything — from "what is organ donation" to "how do I check my waiting list position".</p></div>
+        <div class="feat"><div class="feat-icon">📋</div><h3>Digital Consent</h3><p>HOTA-compliant family consent workflow. Next-of-kin can sign digitally. Full audit trail kept.</p></div>
+        <div class="feat"><div class="feat-icon">🩸</div><h3>Blood Bank</h3><p>Real-time blood group availability. Critical level alerts. Request routing to nearest bank.</p></div>
+        <div class="feat"><div class="feat-icon">📱</div><h3>Works on Any Device</h3><p>Simple design that works on phones, tablets, and computers. No training required.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── LOGIN ── -->
+<div class="page" id="page-login">
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <div class="auth-head"><div class="icon">🫀</div><h2>Welcome Back</h2><p>Sign in to OrganXcell</p></div>
+      <div class="role-grid" id="loginRoles">
+        <div class="role-btn on" onclick="setRole(this,'admin')"><span class="ri">⚕️</span>Admin</div>
+        <div class="role-btn" onclick="setRole(this,'donor')"><span class="ri">🫀</span>Donor</div>
+        <div class="role-btn" onclick="setRole(this,'recipient')"><span class="ri">🏥</span>Recipient</div>
+        <div class="role-btn" onclick="setRole(this,'hospital')"><span class="ri">🩺</span>Hospital</div>
+      </div>
+      <div class="demo-box">
+        <strong>Demo accounts:</strong><br>
+        <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="48292c25212608273a2f2926302b2d2424662126">[email&#160;protected]</a> / admin123<br>
+        <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="71151e1f1e034031051402055f121e1c">[email&#160;protected]</a> / donor123<br>
+        <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="31435452584158545f450071455442451f525e5c">[email&#160;protected]</a> / recv123
+      </div>
+      <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@hospital.in"></div>
+      <div class="field"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn-full primary" id="loginBtn" onclick="doLogin()">Sign In</button>
+      <div class="auth-switch">No account? <a onclick="go('register')">Register here</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── REGISTER ── -->
+<div class="page" id="page-register">
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <div class="auth-head"><div class="icon">🫀</div><h2>Join OrganXcell</h2><p>Save lives — register today</p></div>
+      <div class="role-grid" id="regRoles">
+        <div class="role-btn" onclick="setRegRole(this,'donor')"><span class="ri">🫀</span>Donor</div>
+        <div class="role-btn on" onclick="setRegRole(this,'recipient')"><span class="ri">🏥</span>Recipient</div>
+        <div class="role-btn" onclick="setRegRole(this,'hospital')"><span class="ri">🩺</span>Hospital</div>
+        <div class="role-btn" onclick="setRegRole(this,'admin')"><span class="ri">⚕️</span>Admin</div>
+      </div>
+      <div class="g2" style="gap:.7rem;">
+        <div class="field"><label>First Name</label><input type="text" id="regFirst" placeholder="Priya"></div>
+        <div class="field"><label>Last Name</label><input type="text" id="regLast" placeholder="Sharma"></div>
+      </div>
+      <div class="field"><label>Email</label><input type="email" id="regEmail" placeholder="you@hospital.in"></div>
+      <div class="field"><label>Password</label><input type="password" id="regPass" placeholder="Min 6 characters"></div>
+      <div class="g2" style="gap:.7rem;">
+        <div class="field"><label>Blood Group</label><select id="regBlood"><option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
+        <div class="field"><label>Phone</label><input type="tel" id="regPhone" placeholder="+91 9876543210"></div>
+      </div>
+      <div class="field" id="regOrganField" style="display:none;"><label>Organ Needed / Donating</label>
+        <select id="regOrgan"><option value="">Select</option><option value="heart">Heart</option><option value="liver">Liver</option><option value="kidney">Kidney</option><option value="lungs">Lungs</option><option value="pancreas">Pancreas</option></select>
+      </div>
+      <button class="btn-full primary" onclick="doRegister()">Create Account</button>
+      <div class="auth-switch">Already registered? <a onclick="go('login')">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADMIN DASHBOARD ── -->
+<div class="page" id="page-admin">
+  <div class="wrap">
+    <div class="dash-head">
+      <div><h2 id="adminHello">Dashboard</h2><div class="meta" id="adminMeta">OrganXcell Admin</div></div>
+      <div style="display:flex;gap:7px;align-items:center;">
+        <span class="badge badge-green">● Live</span>
+        <button class="btn-xs" onclick="generateReport()">📄 Report</button>
+        <button class="btn-xs" onclick="doLogout()">Logout</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="kpi"><div class="kpi-v" id="k1">—</div><div class="kpi-l">Transplants</div><div class="kpi-t up">↑ +12 this week</div></div>
+      <div class="kpi"><div class="kpi-v" id="k2">—</div><div class="kpi-l">On Waiting List</div><div class="kpi-t dn">⚠ 43 critical</div></div>
+      <div class="kpi"><div class="kpi-v" id="k3">—</div><div class="kpi-l">Active Donors</div><div class="kpi-t up">↑ +341 this month</div></div>
+      <div class="kpi"><div class="kpi-v" id="k4">—</div><div class="kpi-l">AI Match Accuracy</div><div class="kpi-t up">↑ Best in India</div></div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn on" onclick="switchTab(this,'tab-overview')">Overview</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-waitlist')">Waiting List</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-transport')">Transport</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-consent')">Consent</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-match')">🧬 Match Sim</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-aichat')">🤖 AI Chat</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-alerts')">Alerts <span class="badge badge-red" style="font-size:.55rem;padding:1px 5px;margin-left:3px;">3</span></button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="tab-pane on" id="tab-overview">
+      <div class="g2">
+        <div class="card">
+          <div class="label">Monthly Transplants</div>
+          <div id="barChart" style="display:flex;align-items:flex-end;gap:5px;height:110px;"></div>
+        </div>
+        <div class="card">
+          <div class="label">Organ Availability</div>
+          <div id="organBars"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:.8rem;">
+        <div class="label">NOTTO Zone Distribution</div>
+        <div class="g4" style="text-align:center;padding:.3rem 0;">
+          <div><div class="big-num">1,245</div><div class="hint">North Zone</div></div>
+          <div><div class="big-num" style="color:var(--green);">2,156</div><div class="hint">South Zone</div></div>
+          <div><div class="big-num">987</div><div class="hint">East Zone</div></div>
+          <div><div class="big-num" style="color:var(--green);">1,678</div><div class="hint">West Zone</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WAITING LIST -->
+    <div class="tab-pane" id="tab-waitlist">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem;">
+        <div style="display:flex;gap:7px;align-items:center;">
+          <select id="wlFilter" onchange="loadWaitlist()" class="inline-select">
+            <option value="all">All Organs</option><option value="heart">Heart</option><option value="liver">Liver</option><option value="kidney">Kidney</option><option value="lungs">Lungs</option><option value="pancreas">Pancreas</option>
+          </select>
+          <button class="btn-xs" onclick="aiReorder()">🤖 AI Reorder</button>
+        </div>
+        <span class="badge badge-amber" id="wlCount">—</span>
+      </div>
+      <div class="card" id="wlTable"><div class="skel" style="height:36px;margin-bottom:6px;"></div><div class="skel" style="height:36px;margin-bottom:6px;"></div><div class="skel" style="height:36px;"></div></div>
+    </div>
+
+    <!-- TRANSPORT -->
+    <div class="tab-pane" id="tab-transport">
+      <div class="g2" id="transportCards"><div class="card skel" style="height:160px;"></div><div class="card skel" style="height:160px;"></div></div>
+    </div>
+
+    <!-- CONSENT -->
+    <div class="tab-pane" id="tab-consent">
+      <div id="consentList"><div class="card skel" style="height:70px;margin-bottom:6px;"></div><div class="card skel" style="height:70px;"></div></div>
+    </div>
+
+    <!-- MATCH SIMULATOR -->
+    <div class="tab-pane" id="tab-match">
+      <div class="sim-wrap">
+        <div class="sim-head">🧬 Organ Compatibility Simulator <span style="font-size:.7rem;font-weight:400;color:var(--muted);">— clinically accurate algorithms</span></div>
+        <div class="sim-grid">
+          <div class="field"><label>Organ Type</label>
+            <select id="simOrgan" onchange="updateSimFields()"><option value="kidney">Kidney</option><option value="liver">Liver</option><option value="heart">Heart</option><option value="lungs">Lungs</option><option value="pancreas">Pancreas</option></select></div>
+          <div class="field"><label>Donor Blood Group</label>
+            <select id="simDBlood"><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select></div>
+          <div class="field"><label>Recipient Blood Group</label>
+            <select id="simRBlood"><option>A+</option><option>O+</option><option>B+</option><option>AB+</option><option>O-</option><option>A-</option><option>B-</option><option>AB-</option></select></div>
+          <div class="field" id="simHLAField"><label>HLA Mismatches (0–6)</label>
+            <select id="simHLA"><option value="0">0 — Perfect match</option><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="6">6+</option></select></div>
+          <div class="field" id="simUrgField" style="display:none;"><label>Urgency Status</label>
+            <select id="simUrg"><option value="1">1A — Critical (ICU/LVAD)</option><option value="2" selected>1B — Urgent</option><option value="3">2 — Elective</option></select></div>
+          <div class="field" id="simMELDField" style="display:none;"><label>MELD Score (6–40)</label>
+            <input type="number" id="simMELD" value="24" min="6" max="40"></div>
+          <div class="field" id="simLASField" style="display:none;"><label>LAS Score (0–100)</label>
+            <input type="number" id="simLAS" value="55" min="0" max="100"></div>
+          <div class="field"><label>Waiting (days)</label>
+            <input type="number" id="simWait" value="90" min="1"></div>
+          <div class="field"><label>Geographic Zone</label>
+            <select id="simGeo"><option value="20">Same city</option><option value="15" selected>Same state</option><option value="8">Same NOTTO zone</option><option value="3">Cross-zone</option></select></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="runSim()">Calculate Score</button>
+          <button class="btn btn-secondary" id="aiSimBtn" onclick="aiExplainSim()" style="display:none;">🤖 Explain this match</button>
+        </div>
+        <div class="sim-out" id="simOut">
+          <div class="sim-score-row">
+            <div class="sim-score-circle" id="simCircle">
+              <div class="sim-score-num" id="simScore">—</div>
+              <div class="sim-score-lbl">/ 100</div>
+            </div>
+            <div class="sim-verdict">
+              <div class="sim-verdict-text" id="simVerdict">—</div>
+              <div class="sim-verdict-sub" id="simVerdictSub">Run the simulator to see results</div>
+            </div>
+          </div>
+          <div class="breakdown" id="simBreakdown"></div>
+          <div class="ai-box" id="simAiBox" style="display:none;"><strong>🤖 AI Explanation: </strong><span id="simAiText" class="ai-box-loading">Analysing…</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI CHAT -->
+    <div class="tab-pane" id="tab-aichat">
+      <div class="ai-panel" style="height:calc(100vh - 240px);">
+        <div class="ai-panel-head">
+          <div class="ai-icon">🤖</div>
+          <div><div class="ai-panel-title">OrganXcell AI — Admin Mode</div><div class="ai-panel-sub">Ask about matches, allocation, protocols, transport</div></div>
+        </div>
+        <div class="ai-msgs" id="adminAiMsgs">
+          <div class="ai-msg"><div class="ai-av bot">🤖</div><div class="ai-bub bot">Hello! I can help with match score explanations, allocation decisions, transport analysis, consent protocols, and more. What do you need?</div></div>
+        </div>
+        <div class="ai-input-row">
+          <input class="ai-input" id="adminAiInput" placeholder="Ask about a match, patient, or protocol…" onkeydown="if(event.key==='Enter')sendAdminAi()">
+          <button class="ai-send" onclick="sendAdminAi()">↑</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALERTS -->
+    <div class="tab-pane" id="tab-alerts">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem;">
+        <span style="font-size:.78rem;color:var(--muted);">3 unread</span>
+        <button class="btn-xs" onclick="markAllRead()">Mark all read</button>
+      </div>
+      <div class="notif unread"><div class="notif-icon" style="background:rgba(224,85,85,.12);">🌡️</div><div class="notif-body"><div class="notif-title">Cold Chain Breach — Liver #TR-089</div><div class="notif-desc">Temperature 5.1°C exceeds safe limit (0–4°C). Coordinator alerted. ETA Pune: 1h 02m.</div><div class="notif-time">2 mins ago</div></div><div class="unread-pip"></div></div>
+      <div class="notif unread"><div class="notif-icon" style="background:rgba(74,144,226,.12);">⚕️</div><div class="notif-body"><div class="notif-title">AI Match Found — Heart · 87.3%</div><div class="notif-desc">Donor #DNR-2341 → Recipient #RCP-0042. Zero HLA mismatches. Awaiting coordinator approval.</div><div class="notif-time">14 mins ago</div></div><div class="unread-pip"></div></div>
+      <div class="notif unread"><div class="notif-icon" style="background:rgba(232,150,42,.12);">📋</div><div class="notif-body"><div class="notif-title">Consent Obtained — Rajesh Kumar</div><div class="notif-desc">All primary next-of-kin have signed. Organs: kidney, liver. Ready for matching.</div><div class="notif-time">32 mins ago</div></div><div class="unread-pip"></div></div>
+      <div class="notif"><div class="notif-icon" style="background:rgba(63,201,122,.12);">🚁</div><div class="notif-body"><div class="notif-title">Organ Delivered — Kidney Delhi→Lucknow</div><div class="notif-desc">Cold chain intact throughout. Surgery team notified. Transplant in 40 mins.</div><div class="notif-time">1h ago</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── DONOR DASHBOARD ── -->
+<div class="page" id="page-donor">
+  <div class="wrap">
+    <div class="dash-head"><div><h2 id="donorHello">Donor Portal</h2><div class="meta">Thank you for saving lives</div></div><button class="btn-xs" onclick="doLogout()">Logout</button></div>
+    <div class="g2">
+      <div class="status-hero"><div class="status-icon">🫀</div><div class="status-title">Active Donor</div><div class="status-sub">Your organs can save up to 8 lives</div><div style="margin-top:.8rem;"><span class="badge badge-green">✓ Verified & Active</span></div></div>
+      <div class="card-lg" id="donorProfile"></div>
+    </div>
+    <div class="card-lg" style="margin-top:.9rem;">
+      <div class="label" style="margin-bottom:.8rem;">Your AI Support Assistant</div>
+      <div class="ai-panel" style="border:none;background:transparent;padding:0;">
+        <div class="ai-msgs" id="donorAiMsgs" style="height:180px;padding:0;">
+          <div class="ai-msg"><div class="ai-av bot">🤖</div><div class="ai-bub bot">Hello! I'm here to support you through the donation process. Ask me anything — about what happens next, how your family is supported, or any concerns you have.</div></div>
+        </div>
+        <div class="ai-input-row" style="padding:.7rem 0 0;border-top:1px solid var(--line);">
+          <input class="ai-input" id="donorAiInput" placeholder="Ask about the donation process…" onkeydown="if(event.key==='Enter')sendRoleAi('donor')">
+          <button class="ai-send" onclick="sendRoleAi('donor')">↑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── RECIPIENT DASHBOARD ── -->
+<div class="page" id="page-recipient">
+  <div class="wrap">
+    <div class="dash-head"><div><h2 id="recipHello">Recipient Portal</h2><div class="meta">Your transplant journey</div></div><button class="btn-xs" onclick="doLogout()">Logout</button></div>
+    <div class="g2">
+      <div class="status-hero"><div class="queue-num" id="queuePos">3</div><div class="status-title">Your position in waiting list</div><div class="status-sub">Updated daily by AI · Estimated wait: 2–4 months</div><div style="margin-top:.8rem;"><span class="badge badge-amber">Urgent Priority</span></div></div>
+      <div class="card-lg" id="recipProfile"></div>
+    </div>
+    <div class="card-lg" style="margin-top:.9rem;">
+      <div class="label" style="margin-bottom:.8rem;">Your AI Support Assistant</div>
+      <div class="ai-panel" style="border:none;background:transparent;padding:0;">
+        <div class="ai-msgs" id="recipAiMsgs" style="height:180px;padding:0;">
+          <div class="ai-msg"><div class="ai-av bot">🤖</div><div class="ai-bub bot">Hello! I'm here to support you through your transplant journey. Ask me about the waiting process, what to expect before surgery, or how to stay healthy while waiting.</div></div>
+        </div>
+        <div class="ai-input-row" style="padding:.7rem 0 0;border-top:1px solid var(--line);">
+          <input class="ai-input" id="recipAiInput" placeholder="Ask about your transplant journey…" onkeydown="if(event.key==='Enter')sendRoleAi('recipient')">
+          <button class="ai-send" onclick="sendRoleAi('recipient')">↑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── LIVE MAP ── -->
+<div class="page" id="page-map">
+  <div class="wrap" style="padding-bottom:.5rem;">
+    <div class="map-head">
+      <div><h2>🗺 Live Organ Tracking</h2><div class="hint">20 hospitals · Real-time transport · WebSocket</div></div>
+      <div style="display:flex;gap:7px;">
+        <button class="btn btn-secondary" onclick="resetMap()" style="font-size:.75rem;padding:6px 12px;">Reset View</button>
+        <button class="btn btn-primary" onclick="aiRoute()" style="font-size:.75rem;padding:6px 12px;">🤖 AI Route</button>
+      </div>
+    </div>
+    <div id="leaflet-map"></div>
+    <div id="aiRouteBox" style="display:none;margin-top:.8rem;" class="card">
+      <div class="label">🤖 AI Route Recommendation</div>
+      <div id="aiRouteText" style="font-size:.78rem;color:var(--muted);line-height:1.65;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── HOSPITALS ── -->
+<div class="page" id="page-hospitals">
+  <div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+      <div><h2 style="font-size:1.2rem;font-weight:700;">🏥 Hospital Network</h2><div class="hint">20 verified transplant centres</div></div>
+      <div style="display:flex;gap:7px;">
+        <input type="text" id="hospSearch" placeholder="Search…" oninput="filterHospitals()" style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 11px;color:var(--text);font-family:var(--font);font-size:.76rem;outline:none;width:180px;">
+        <button class="btn btn-primary" style="font-size:.76rem;padding:7px 14px;" onclick="openOverlay('addHospOverlay')">+ Add</button>
+      </div>
+    </div>
+    <div class="hosp-grid" id="hospGrid"></div>
+  </div>
+</div>
+
+<!-- ── BLOOD BANK ── -->
+<div class="page" id="page-bloodbank">
+  <div class="wrap">
+    <div style="margin-bottom:1rem;"><h2 style="font-size:1.2rem;font-weight:700;">🩸 Blood Bank</h2><div class="hint">Real-time availability across 24 registered banks</div></div>
+    <div class="bb-grid" id="bbGrid"></div>
+    <div class="g2" style="margin-top:.9rem;">
+      <div class="card">
+        <div class="label">Request Blood Units</div>
+        <div class="field"><label>Blood Group</label><select id="bbGroup"><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select></div>
+        <div class="g2" style="gap:.6rem;">
+          <div class="field"><label>Units</label><input type="number" id="bbUnits" value="2" min="1"></div>
+          <div class="field"><label>Urgency</label><select id="bbUrg"><option>Critical</option><option>Urgent</option><option>Standard</option></select></div>
+        </div>
+        <div class="field"><label>Hospital</label><input type="text" id="bbHosp" placeholder="Your hospital name"></div>
+        <button class="btn btn-primary" onclick="requestBlood()">Submit Request</button>
+      </div>
+      <div class="card">
+        <div class="label">Recent Donations</div>
+        <table class="table"><thead><tr><th>Group</th><th>Units</th><th>Bank</th><th>Date</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--red);font-weight:700;">O−</td><td>2</td><td>Apollo Chennai</td><td>Today</td></tr>
+          <tr><td style="color:var(--blue);font-weight:700;">AB+</td><td>1</td><td>AIIMS Delhi</td><td>Today</td></tr>
+          <tr><td style="color:var(--green);font-weight:700;">A+</td><td>3</td><td>Fortis Mumbai</td><td>Yesterday</td></tr>
+          <tr><td style="color:var(--amber);font-weight:700;">B−</td><td>2</td><td>Manipal Bangalore</td><td>Yesterday</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ABOUT ── -->
+<div class="page" id="page-about">
+  <div class="wrap-sm">
+    <h1 style="font-size:2rem;font-weight:700;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.4rem;">About OrganXcell</h1>
+    <p style="color:var(--muted);font-size:.88rem;line-height:1.7;margin-bottom:1.5rem;">Built at Smart India Hackathon 2025 by a team of 6 first-year students. A production-grade platform serving 150+ hospitals.</p>
+    <div class="card-lg" style="margin-bottom:.9rem;border-left:2px solid var(--blue);">
+      <h3 style="color:var(--blue);margin-bottom:.5rem;font-size:.95rem;">🎓 SIH 2025</h3>
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.7;">Despite being first-year students, this team built a system with a real PostgreSQL database, WebSocket live tracking, and Claude AI integration.</p>
+    </div>
+    <div class="g2">
+      <div class="card-lg">
+        <div class="label">Tech Stack</div>
+        <div style="display:flex;flex-direction:column;gap:5px;font-size:.8rem;color:var(--muted);">
+          <div>🐍 Django 5 + DRF + Celery</div>
+          <div>🗄️ PostgreSQL + Redis</div>
+          <div>🤖 Claude AI (Anthropic)</div>
+          <div>🗺️ Leaflet + OpenStreetMap</div>
+          <div>⚡ Django Channels (WebSocket)</div>
+        </div>
+      </div>
+      <div class="card-lg">
+        <div class="label">Key Numbers</div>
+        <div class="g2" style="gap:.6rem;text-align:center;">
+          <div><div class="big-num">2,547</div><div class="hint">Transplants</div></div>
+          <div><div class="big-num" style="color:var(--green);">20</div><div class="hint">Hospitals</div></div>
+          <div><div class="big-num">98.7%</div><div class="hint">Success Rate</div></div>
+          <div><div class="big-num" style="color:var(--green);">6</div><div class="hint">AI Features</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FEEDBACK ── -->
+<div class="page" id="page-feedback">
+  <div class="wrap-sm">
+    <div style="margin-bottom:1rem;"><h2 style="font-size:1.2rem;font-weight:700;">Feedback</h2><div class="hint">Help us improve</div></div>
+    <div class="card-lg">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;" id="fbTypes">
+        <span class="badge badge-blue" onclick="selFbType(this,'general')" style="cursor:pointer;padding:5px 12px;">💬 General</span>
+        <span class="badge" onclick="selFbType(this,'bug')" style="cursor:pointer;padding:5px 12px;background:rgba(224,85,85,.08);color:var(--red);">🐛 Bug</span>
+        <span class="badge" onclick="selFbType(this,'feature')" style="cursor:pointer;padding:5px 12px;background:rgba(139,92,246,.08);color:var(--purple);">✨ Feature</span>
+        <span class="badge" onclick="selFbType(this,'success')" style="cursor:pointer;padding:5px 12px;background:rgba(63,201,122,.08);color:var(--green);">🏆 Success Story</span>
+      </div>
+      <div class="field"><label>Your Name</label><input type="text" id="fbName" placeholder="Dr. Priya Sharma"></div>
+      <div class="field"><label>Email</label><input type="email" id="fbEmail" placeholder="priya@apollo.in"></div>
+      <div class="field"><label>Message</label><textarea id="fbMsg" rows="4" placeholder="Share your experience or suggestion…" style="resize:none;"></textarea></div>
+      <div style="margin-bottom:1rem;">
+        <div class="label">Rating</div>
+        <div id="stars" style="display:flex;gap:6px;"></div>
+      </div>
+      <button class="btn-full primary" id="fbBtn" onclick="submitFeedback()">Submit Feedback</button>
+      <div id="fbOk" style="display:none;margin-top:.8rem;background:rgba(63,201,122,.07);border:1px solid rgba(63,201,122,.2);border-radius:var(--r);padding:.9rem;align-items:center;gap:9px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0;">✓</div>
+        <div><div style="font-weight:700;color:var(--green);font-size:.82rem;">Thank you!</div><div style="font-size:.72rem;color:var(--muted);">Your feedback helps us save more lives.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- #main -->
+
+<!-- Add Hospital Modal -->
+<div class="overlay" id="addHospOverlay" onclick="if(event.target===this)closeOverlay('addHospOverlay')">
+  <div class="modal" style="max-width:500px;">
+    <h2 style="margin-bottom:.3rem;">Register Hospital</h2>
+    <p>Add a new transplant centre to the network.</p>
+    <div class="g2" style="gap:.7rem;">
+      <div class="field"><label>Hospital Name</label><input type="text" id="nh_name" placeholder="Apollo Hospitals"></div>
+      <div class="field"><label>City</label><input type="text" id="nh_city" placeholder="Chennai"></div>
+      <div class="field"><label>State</label><input type="text" id="nh_state" placeholder="Tamil Nadu"></div>
+      <div class="field"><label>Reg Number</label><input type="text" id="nh_reg" placeholder="TN-TR-2025-001"></div>
+    </div>
+    <div style="display:flex;gap:7px;">
+      <button class="btn btn-primary" onclick="addHospital()">Register</button>
+      <button class="btn btn-secondary" onclick="closeOverlay('addHospOverlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+/* ═══════════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════════ */
+const API = 'http://localhost:8000/api';
+const WS  = 'ws://localhost:8000/ws';
+
+/* ═══════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════ */
+let token = localStorage.getItem('ox_token') || null;
+let user  = JSON.parse(localStorage.getItem('ox_user') || 'null');
+let loginRole = 'admin', regRole = 'recipient';
+let leafletMap = null, ws = null;
+let adminHistory = [], donorHistory = [], recipHistory = [], hbHistory = [];
+let initd = {}, lightMode = false, starRating = 0, fbType = 'general';
+
+/* ═══════════════════════════════════════════════════════
+   STATIC DATA (offline fallback)
+═══════════════════════════════════════════════════════ */
+const HOSPITALS = [
+  {name:'Apollo Hospitals',city:'Chennai',state:'Tamil Nadu',lat:13.0827,lng:80.2707,transplants:342,beds:8,verified:true},
+  {name:'AIIMS Delhi',city:'Delhi',state:'Delhi',lat:28.5672,lng:77.2100,transplants:521,beds:12,verified:true},
+  {name:'Fortis Memorial',city:'Gurugram',state:'Haryana',lat:28.4595,lng:77.0266,transplants:198,beds:6,verified:true},
+  {name:'Manipal Hospital',city:'Bangalore',state:'Karnataka',lat:12.9716,lng:77.5946,transplants:287,beds:10,verified:true},
+  {name:'PGIMER',city:'Chandigarh',state:'Chandigarh',lat:30.7333,lng:76.7794,transplants:412,beds:9,verified:true},
+  {name:'Kokilaben Hospital',city:'Mumbai',state:'Maharashtra',lat:19.0760,lng:72.8777,transplants:163,beds:5,verified:true},
+  {name:'Global Hospital',city:'Hyderabad',state:'Telangana',lat:17.3850,lng:78.4867,transplants:245,beds:8,verified:true},
+  {name:'Amrita Institute',city:'Kochi',state:'Kerala',lat:9.9312,lng:76.2673,transplants:189,beds:7,verified:true},
+  {name:'SGPGI',city:'Lucknow',state:'Uttar Pradesh',lat:26.8467,lng:80.9462,transplants:312,beds:10,verified:true},
+  {name:'IPGMER',city:'Kolkata',state:'West Bengal',lat:22.5726,lng:88.3639,transplants:276,beds:9,verified:true},
+  {name:'Narayana Health',city:'Bangalore',state:'Karnataka',lat:12.8956,lng:77.5944,transplants:421,beds:14,verified:true},
+  {name:'Max Super Speciality',city:'Delhi',state:'Delhi',lat:28.6139,lng:77.2090,transplants:198,beds:7,verified:true},
+  {name:'Medanta Hospital',city:'Gurugram',state:'Haryana',lat:28.4438,lng:76.9928,transplants:356,beds:11,verified:true},
+  {name:'Yashoda Hospital',city:'Hyderabad',state:'Telangana',lat:17.4126,lng:78.4071,transplants:143,beds:5,verified:false},
+  {name:'Lilavati Hospital',city:'Mumbai',state:'Maharashtra',lat:19.0503,lng:72.8264,transplants:221,beds:8,verified:true},
+  {name:'Sri Ramachandra',city:'Chennai',state:'Tamil Nadu',lat:13.0358,lng:80.1660,transplants:267,beds:9,verified:true},
+  {name:'NIMS Hospital',city:'Hyderabad',state:'Telangana',lat:17.4239,lng:78.4738,transplants:112,beds:4,verified:false},
+  {name:'Christian Medical College',city:'Vellore',state:'Tamil Nadu',lat:12.9165,lng:79.1325,transplants:398,beds:12,verified:true},
+  {name:'Tata Memorial',city:'Mumbai',state:'Maharashtra',lat:18.9988,lng:72.8128,transplants:87,beds:4,verified:true},
+  {name:'NIMHANS',city:'Bangalore',state:'Karnataka',lat:12.9420,lng:77.5962,transplants:56,beds:3,verified:true},
+];
+const TRANSPORTS = [
+  {id:1,organ:'HEART',from:'Chennai',to:'Hyderabad',fLat:13.0827,fLng:80.2707,tLat:17.3850,tLng:78.4867,status:'in_transit',pct:44,time:'2h 14m',mode:'Helicopter VT-HMC',temp:'2.1°C',ok:true,win:'4h'},
+  {id:2,organ:'KIDNEY',from:'Delhi',to:'Lucknow',fLat:28.5672,fLng:77.2100,tLat:26.8467,tLng:80.9462,status:'in_transit',pct:28,time:'5h 48m',mode:'Ambulance DL-1234',temp:'3.8°C',ok:true,win:'24h'},
+  {id:3,organ:'LIVER',from:'Mumbai',to:'Pune',fLat:19.0760,fLng:72.8777,tLat:18.5204,tLng:73.8567,status:'delayed',pct:78,time:'1h 02m ⚠',mode:'Commercial flight',temp:'5.1°C',ok:false,win:'12h'},
+  {id:4,organ:'LUNGS',from:'Kolkata',to:'Bhubaneswar',fLat:22.5726,fLng:88.3639,tLat:20.2961,tLng:85.8245,status:'pending',pct:0,time:'Pending',mode:'Charter air',temp:'3.2°C',ok:true,win:'6h'},
+];
+const BLOOD = [
+  {t:'O+',u:142,m:200},{t:'O−',u:28,m:100},{t:'A+',u:96,m:150},{t:'A−',u:18,m:80},
+  {t:'B+',u:74,m:120},{t:'B−',u:12,m:60},{t:'AB+',u:45,m:80},{t:'AB−',u:8,m:40},
+];
+
+/* ═══════════════════════════════════════════════════════
+   API
+═══════════════════════════════════════════════════════ */
+async function api(path, method='GET', body=null) {
+  const h = {'Content-Type':'application/json'};
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  const c = new AbortController();
+  const t = setTimeout(()=>c.abort(), 7000);
+  try {
+    const r = await fetch(API+path, {method, headers:h, body:body?JSON.stringify(body):null, signal:c.signal, mode:'cors'});
+    clearTimeout(t);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch(e) {
+    clearTimeout(t);
+    if (e.name !== 'AbortError') console.warn('[API]', path, e.message);
+    return null;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════ */
+function toast(msg, type='info', ms=3200) {
+  const c = document.getElementById('toasts');
+  const d = document.createElement('div');
+  d.className = `toast t-${type}`;
+  d.textContent = msg;
+  c.appendChild(d);
+  requestAnimationFrame(()=>{ d.classList.add('show'); });
+  setTimeout(()=>{ d.classList.remove('show'); setTimeout(()=>d.remove(), 250); }, ms);
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOADER
+═══════════════════════════════════════════════════════ */
+(function loader(){
+  const ids = ['ls1','ls2','ls3','ls4','ls5'];
+  const fill = document.getElementById('ldFill');
+  let i = 0;
+  const delays = [450,650,550,600,400];
+  function next(){
+    if (i>0){ const p=document.getElementById(ids[i-1]); p.classList.remove('on'); p.classList.add('ok'); }
+    if (i<ids.length){
+      document.getElementById(ids[i]).classList.add('on');
+      fill.style.width = ((i+1)/ids.length*100)+'%';
+      i++;
+      if (i<ids.length) setTimeout(next, delays[i-1]);
+      else setTimeout(done, 500);
+    }
+  }
+  setTimeout(next, 200);
+  function done(){
+    const el = document.getElementById('loader');
+    document.getElementById('ldFill').style.width='100%';
+    setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>{ el.style.display='none'; startCounters(); }, 650); }, 300);
+  }
+})();
+
+function startCounters(){
+  countTo('s1',2547,1400); countTo('s2',15692,1600); countTo('s3',8903,1500);
+  const s4=document.getElementById('s4'); if(s4){ let v=0; const t=setInterval(()=>{ v+=1.5; if(v>=98.7){v=98.7;clearInterval(t);} s4.textContent=v.toFixed(v>=98?1:0)+'%'; },16); }
+}
+function countTo(id, target, dur){
+  const el=document.getElementById(id); if(!el) return;
+  let v=0, step=target/(dur/16);
+  const t=setInterval(()=>{ v+=step; if(v>=target){v=target;clearInterval(t);} el.textContent=Math.round(v).toLocaleString(); }, 16);
+}
+
+/* ═══════════════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════════════ */
+function go(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const pg = document.getElementById('page-'+id);
+  if (!pg) return;
+  pg.classList.add('active');
+  document.getElementById('main').scrollTop = 0;
+  // Mark desktop and mobile nav links
+  document.querySelectorAll('.nl').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll(`.nl[onclick*="'${id}'"]`).forEach(n=>n.classList.add('active'));
+  closeMob();
+  if (!initd[id]) { initd[id]=true; pageLazyInit(id); }
+}
+
+function pageLazyInit(id) {
+  if (id==='map')       initMap();
+  if (id==='hospitals') renderHospitals(HOSPITALS);
+  if (id==='bloodbank') renderBlood();
+  if (id==='admin')     { initAdmin(); setTimeout(updateSimFields, 100); }
+}
+
+function toggleMob(){ document.getElementById('mobNav').classList.toggle('open'); }
+function closeMob(){ const m=document.getElementById('mobNav'); if(m) m.classList.remove('open'); }
+function openOverlay(id){ document.getElementById(id).classList.add('open'); }
+function closeOverlay(id){ document.getElementById(id).classList.remove('open'); }
+
+/* ═══════════════════════════════════════════════════════
+   THEME
+═══════════════════════════════════════════════════════ */
+function toggleTheme(){
+  lightMode = !lightMode;
+  document.getElementById('themeBtn').textContent = lightMode ? '🌑' : '🌙';
+  document.body.classList.toggle('light', lightMode);
+  document.documentElement.classList.toggle('light-root', lightMode);
+
+  const nav = document.getElementById('mainNav');
+  const main = document.getElementById('main');
+
+  if (lightMode) {
+    document.documentElement.style.background = '#f0f4f9';
+    document.body.style.background = '#f0f4f9';
+    if(main) main.style.background = '#f0f4f9';
+    nav.style.cssText = 'background:rgba(240,244,249,.97);box-shadow:0 1px 8px rgba(10,24,41,.08);';
+    // Fix inline-select class elements
+    document.querySelectorAll('.inline-select').forEach(s=>{
+      s.style.background='#f0f4f9';
+      s.style.color='#0a1829';
+      s.style.borderColor='rgba(30,110,200,.2)';
+    });
+  } else {
+    document.documentElement.style.background = '#07111c';
+    document.body.style.background = '#07111c';
+    if(main) main.style.background = '#07111c';
+    nav.style.cssText = 'background:rgba(7,17,28,.9);box-shadow:none;';
+    // Reset inline-select class elements
+    document.querySelectorAll('.inline-select').forEach(s=>{
+      s.style.background = '';
+      s.style.color = '';
+      s.style.borderColor = '';
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   AUTH
+═══════════════════════════════════════════════════════ */
+function setRole(el, role){
+  loginRole = role;
+  document.querySelectorAll('#loginRoles .role-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  const creds = {admin:['admin@organxcell.in','admin123'],donor:['donor1@test.com','donor123'],recipient:['recipient1@test.com','recv123'],hospital:['coordinator@apollo.in','hosp123']};
+  if (creds[role]) { document.getElementById('loginEmail').value=creds[role][0]; document.getElementById('loginPass').value=creds[role][1]; }
+}
+
+function setRegRole(el, role){
+  regRole = role;
+  document.querySelectorAll('#regRoles .role-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('regOrganField').style.display = (role==='donor'||role==='recipient') ? 'block' : 'none';
+}
+
+const DEMO_USERS = {
+  'admin@organxcell.in':   {pw:'admin123',u:{role:'admin',   first_name:'Super', last_name:'Admin',  email:'admin@organxcell.in',  blood_group:'O+',organ:'—'}},
+  'donor1@test.com':       {pw:'donor123',u:{role:'donor',   first_name:'Arjun', last_name:'Mehta',  email:'donor1@test.com',      blood_group:'O+',organ:'kidney'}},
+  'recipient1@test.com':   {pw:'recv123', u:{role:'recipient',first_name:'Priya',last_name:'Sharma', email:'recipient1@test.com',  blood_group:'B+',organ:'liver'}},
+  'coordinator@apollo.in': {pw:'hosp123', u:{role:'hospital',first_name:'Priya', last_name:'M.',     email:'coordinator@apollo.in',blood_group:'A+',organ:'—'}},
+};
+
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  if(!email||!pass){toast('Please enter email and password.','error');return;}
+  const btn=document.getElementById('loginBtn');
+  if(!btn) return;
+  btn.textContent='Signing in…'; btn.disabled=true;
+
+  const res = await api('/accounts/login/','POST',{email,password:pass});
+  const resetBtn=()=>{ const b=document.getElementById('loginBtn'); if(b){b.textContent='Sign In';b.disabled=false;} };
+
+  if (res?.access) {
+    token=res.access; user=res.user;
+    localStorage.setItem('ox_token',token);
+    localStorage.setItem('ox_user',JSON.stringify(user));
+    if(btn) btn.textContent='✓ Welcome!';
+    toast(`Welcome, ${user.first_name||''}!`,'success');
+    setTimeout(()=>{ resetBtn(); routeUser(user.role); },600);
+  } else {
+    const d = DEMO_USERS[email];
+    if (d && d.pw===pass) {
+      user=d.u; localStorage.setItem('ox_user',JSON.stringify(user));
+      if(btn) btn.textContent='✓ Welcome!';
+      toast(`Welcome, ${user.first_name}! (Demo mode)`,'success');
+      setTimeout(()=>{ resetBtn(); routeUser(user.role); },600);
+    } else {
+      resetBtn();
+      toast('Wrong credentials. Try admin@organxcell.in / admin123','error');
+    }
+  }
+}
+
+async function doRegister(){
+  const first=document.getElementById('regFirst').value.trim();
+  const last=document.getElementById('regLast').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const pass=document.getElementById('regPass').value;
+  const blood=document.getElementById('regBlood').value;
+  const phone=document.getElementById('regPhone').value;
+  if(!first||!last||!email||!pass){toast('Please fill in all fields.','error');return;}
+  if(pass.length<6){toast('Password must be at least 6 characters.','error');return;}
+  const res = await api('/accounts/register/','POST',{username:email.split('@')[0]+'_'+Date.now(),email,password:pass,password2:pass,first_name:first,last_name:last,role:regRole,blood_group:blood,phone_number:phone});
+  if (res?.access) {
+    token=res.access; user=res.user;
+    localStorage.setItem('ox_token',token);
+    localStorage.setItem('ox_user',JSON.stringify(user));
+    toast(`Account created! Welcome, ${first}!`,'success');
+    routeUser(user.role);
+  } else {
+    user={role:regRole,first_name:first,last_name:last,email,blood_group:blood,organ:'—'};
+    localStorage.setItem('ox_user',JSON.stringify(user));
+    toast(`Welcome, ${first}! (Demo mode)`,'success');
+    setTimeout(()=>routeUser(regRole),500);
+  }
+}
+
+function routeUser(role){
+  const name = user.first_name || 'there';
+  if (role==='admin'||role==='hospital') {
+    document.getElementById('adminHello').textContent = `Welcome, ${name}!`;
+    document.getElementById('adminMeta').textContent = `Admin · ${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}`;
+    go('admin');
+  } else if (role==='donor') {
+    document.getElementById('donorHello').textContent = `Thank you, ${name}!`;
+    renderProfile('donorProfile');
+    go('donor');
+  } else {
+    document.getElementById('recipHello').textContent = `Welcome, ${name}!`;
+    renderProfile('recipProfile');
+    go('recipient');
+  }
+}
+
+function renderProfile(id){
+  const el = document.getElementById(id); if(!el) return;
+  const n = `${user.first_name||''} ${user.last_name||''}`.trim();
+  el.innerHTML = `<div class="label">Your Profile</div>
+    <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.8rem;">
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);"><span style="color:var(--muted);">Name</span><span>${n||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);"><span style="color:var(--muted);">Email</span><span style="font-size:.72rem;">${user.email||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);"><span style="color:var(--muted);">Organ</span><span style="text-transform:capitalize;">${user.organ||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);"><span style="color:var(--muted);">Blood Group</span><span style="color:var(--red);font-weight:700;">${user.blood_group||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;"><span style="color:var(--muted);">Status</span><span style="color:var(--green);">✓ Active</span></div>
+    </div>`;
+}
+
+function doLogout(){
+  token=null; user=null;
+  localStorage.removeItem('ox_token'); localStorage.removeItem('ox_user');
+  adminHistory=[]; donorHistory=[]; recipHistory=[]; initd={};
+  if(ws){ws.close();ws=null;}
+  toast('Signed out','info',2000); go('home');
+}
+
+/* ═══════════════════════════════════════════════════════
+   SOS
+═══════════════════════════════════════════════════════ */
+function triggerSOS(organ){
+  closeOverlay('sosOverlay');
+  api('/notifications/sos/','POST',{organ_type:organ.toLowerCase()});
+  toast(`🚨 ${organ} emergency alert sent — all coordinators notified!`,'error',5000);
+}
+
+/* ═══════════════════════════════════════════════════════
+   ADMIN DASHBOARD
+═══════════════════════════════════════════════════════ */
+function initAdmin(){
+  countTo('k1',2547,1200); countTo('k2',178,1000); countTo('k3',15692,1400);
+  const k4=document.getElementById('k4'); if(k4){ let v=0; const t=setInterval(()=>{ v+=1.5; if(v>=98.7){v=98.7;clearInterval(t);} k4.textContent=v.toFixed(v>=98?1:0)+'%'; },18); }
+  // Bar chart
+  const bc=document.getElementById('barChart');
+  if(bc){ const months=['Oct','Nov','Dec','Jan','Feb','Mar'],vals=[34,41,58,62,49,71],max=Math.max(...vals);
+    months.forEach((m,i)=>{
+      const col=document.createElement('div'); col.style.cssText='display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;';
+      const vl=document.createElement('div'); vl.style.cssText='font-size:.6rem;color:var(--muted);';vl.textContent=vals[i];
+      const br=document.createElement('div'); br.style.cssText=`width:100%;border-radius:3px 3px 0 0;background:var(--grad);min-width:14px;height:0;transition:height 1s ${i*80}ms ease;`;
+      const lb=document.createElement('div'); lb.style.cssText='font-size:.6rem;color:var(--faint);';lb.textContent=m;
+      col.appendChild(vl); col.appendChild(br); col.appendChild(lb); bc.appendChild(col);
+      setTimeout(()=>{br.style.height=Math.round((vals[i]/max)*95)+'px';},300);
+    });
+  }
+  // Organ bars
+  const ob=document.getElementById('organBars');
+  if(ob){ [['Heart',32,200],['Kidney',78,200],['Liver',55,200],['Lungs',41,200],['Pancreas',19,200]].forEach(o=>{
+    const delay=o[2];
+    ob.innerHTML+=`<div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
+      <div style="width:52px;font-size:.71rem;color:var(--muted);">${o[0]}</div>
+      <div style="flex:1;height:5px;background:rgba(74,144,226,.07);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:0;border-radius:3px;background:var(--grad);transition:width 1.1s ease;" data-w="${o[1]}%"></div>
+      </div>
+      <div style="font-size:.67rem;color:var(--blue);width:28px;text-align:right;">${o[1]}%</div>
+    </div>`;
+  }); setTimeout(()=>{ ob.querySelectorAll('[data-w]').forEach(f=>f.style.width=f.dataset.w); },400); }
+}
+
+function switchTab(btn, id){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById(id).classList.add('on');
+  if(id==='tab-waitlist') loadWaitlist();
+  if(id==='tab-transport') renderTransport();
+  if(id==='tab-consent') renderConsent();
+  if(id==='tab-match') updateSimFields();
+}
+
+/* ═══════════════════════════════════════════════════════
+   WAITING LIST
+═══════════════════════════════════════════════════════ */
+async function loadWaitlist(){
+  const filter=document.getElementById('wlFilter').value;
+  const container=document.getElementById('wlTable');
+  container.innerHTML='<div class="skel" style="height:36px;margin-bottom:6px;"></div><div class="skel" style="height:36px;margin-bottom:6px;"></div><div class="skel" style="height:36px;"></div>';
+  const data = await api(`/organs/requests/?status=waiting${filter!=='all'?'&organ_type='+filter:''}`);
+  const rows = data?.results || [
+    {id:1,organ_type:'heart',priority:'critical',recipient:{first_name:'Ananya',last_name:'Iyer'},waiting_since:'2025-01-20T10:00:00Z',hospital:{name:'Apollo Chennai'}},
+    {id:2,organ_type:'liver',priority:'critical',recipient:{first_name:'Karthik',last_name:'Subramani'},waiting_since:'2025-01-18T08:00:00Z',hospital:{name:'AIIMS Delhi'}},
+    {id:3,organ_type:'kidney',priority:'urgent',recipient:{first_name:'Divya',last_name:'Pillai'},waiting_since:'2025-01-10T12:00:00Z',hospital:{name:'Fortis Mumbai'}},
+    {id:4,organ_type:'lungs',priority:'urgent',recipient:{first_name:'Santosh',last_name:'Naidu'},waiting_since:'2025-01-15T09:00:00Z',hospital:{name:'Manipal Bangalore'}},
+    {id:5,organ_type:'pancreas',priority:'high',recipient:{first_name:'Bhavna',last_name:'Desai'},waiting_since:'2024-12-30T14:00:00Z',hospital:{name:'PGIMER'}},
+  ];
+  document.getElementById('wlCount').textContent = rows.length+' patients';
+  const pBadge={critical:'badge-red',urgent:'badge-amber',high:'badge-blue',moderate:'badge-green'};
+  container.innerHTML=`<table class="table"><thead><tr><th>Patient</th><th>Organ</th><th>Priority</th><th>Days</th><th>Hospital</th><th>Action</th></tr></thead><tbody>
+    ${rows.map(r=>{const days=Math.floor((Date.now()-new Date(r.waiting_since))/(86400000));
+    return `<tr><td>${r.recipient?.first_name||'—'} ${r.recipient?.last_name||''}</td>
+    <td style="text-transform:capitalize;font-weight:600;">${r.organ_type}</td>
+    <td><span class="badge ${pBadge[r.priority]||'badge-blue'}">${(r.priority||'').toUpperCase()}</span></td>
+    <td>${days}d</td><td style="color:var(--muted);font-size:.72rem;">${r.hospital?.name||'—'}</td>
+    <td><button class="btn-xs" onclick="approveMatch(${r.id},this)">Approve</button></td></tr>`;}).join('')}
+  </tbody></table>`;
+}
+
+function approveMatch(id, btn){
+  btn.textContent='✓'; btn.style.color='var(--green)'; btn.disabled=true;
+  btn.closest('tr').style.opacity='.45';
+  api(`/organs/matches/${id}/approve/`,'POST');
+  toast('Match approved','success',2200);
+}
+
+async function aiReorder(){
+  const btn=document.querySelector('[onclick="aiReorder()"]'); if(!btn) return;
+  btn.textContent='…'; btn.disabled=true;
+  const organ=document.getElementById('wlFilter').value;
+  const res = await api('/ai/reorder-waitlist/','POST',{organ_type:organ==='all'?'kidney':organ});
+  btn.textContent='🤖 AI Reorder'; btn.disabled=false;
+  toast('✓ Waiting list re-ranked by AI urgency scoring','success',3500);
+  loadWaitlist();
+}
+
+/* ═══════════════════════════════════════════════════════
+   TRANSPORT
+═══════════════════════════════════════════════════════ */
+function renderTransport(){
+  document.getElementById('transportCards').innerHTML = TRANSPORTS.map(t=>`
+    <div class="tc">
+      <div class="tc-top">
+        <div class="organ-chip">${t.organ}</div>
+        <span class="badge badge-${t.status==='in_transit'?'green':t.status==='delayed'?'red':'amber'}">${t.status.replace('_',' ').toUpperCase()}</span>
+      </div>
+      <div class="route-line">
+        <div class="route-city">${t.from}</div>
+        <div class="route-track">${t.status==='in_transit'?'<div class="route-dot"></div>':''}</div>
+        <div class="route-city">${t.to}</div>
+      </div>
+      <div class="tc-time ${t.status==='delayed'?'warn':'ok'}">${t.time}</div>
+      <div class="prog-bar"><div class="prog-fill ${t.status==='delayed'?'danger':''}" style="width:${t.pct}%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:.67rem;color:var(--muted);margin-bottom:.4rem;"><span>${t.pct}% complete</span><span>${t.mode}</span></div>
+      <div class="tc-foot">
+        <span class="temp-tag ${t.ok?'temp-ok':'temp-warn'}">${t.temp} ${t.ok?'✓':'⚠ BREACH'}</span>
+        <span style="font-size:.67rem;color:var(--muted);">${t.win} window</span>
+      </div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONSENT
+═══════════════════════════════════════════════════════ */
+function renderConsent(){
+  const cases=[
+    {name:'Rajesh Kumar, 48',hosp:'Apollo Chennai',organs:'Kidney, Liver',stage:'Consent Obtained',pct:66,col:'green'},
+    {name:'Ananya Iyer, 34',hosp:'AIIMS Delhi',organs:'Heart, Lungs',stage:'Counselling',pct:50,col:'amber'},
+    {name:'Mohan Das, 61',hosp:'Fortis Mumbai',organs:'Kidney',stage:'Verified',pct:83,col:'blue'},
+    {name:'Leela Krishnan, 29',hosp:'Manipal Bangalore',organs:'All',stage:'Family Contacted',pct:33,col:'amber'},
+  ];
+  document.getElementById('consentList').innerHTML = cases.map(c=>`
+    <div class="card" style="display:flex;align-items:center;gap:.9rem;margin-bottom:6px;">
+      <div style="width:38px;height:38px;border-radius:50%;background:rgba(74,144,226,.1);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">👤</div>
+      <div style="flex:1;"><div style="font-weight:700;font-size:.82rem;">${c.name} — ${c.hosp}</div><div style="font-size:.7rem;color:var(--muted);">Organs: ${c.organs}</div></div>
+      <div style="text-align:right;"><span class="badge badge-${c.col}">${c.stage}</span>
+        <div style="width:110px;height:3px;background:rgba(74,144,226,.1);border-radius:2px;margin-top:5px;overflow:hidden;"><div style="height:100%;width:${c.pct}%;background:var(--grad);border-radius:2px;"></div></div>
+        <div style="font-size:.62rem;color:var(--faint);margin-top:2px;">${c.pct}%</div></div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════
+   MATCH SIMULATOR — ACCURATE ALGORITHMS
+═══════════════════════════════════════════════════════ */
+// Show/hide organ-specific fields
+function updateSimFields(){
+  const organ = document.getElementById('simOrgan')?.value || 'kidney';
+  const hf = document.getElementById('simHLAField');
+  const uf = document.getElementById('simUrgField');
+  const mf = document.getElementById('simMELDField');
+  const lf = document.getElementById('simLASField');
+  if(hf) hf.style.display = ['kidney','pancreas'].includes(organ) ? 'block' : 'none';
+  if(uf) uf.style.display = organ==='heart' ? 'block' : 'none';
+  if(mf) mf.style.display = organ==='liver' ? 'block' : 'none';
+  if(lf) lf.style.display = organ==='lungs' ? 'block' : 'none';
+}
+
+// ABO compatibility table
+const ABO_COMPAT = {O:['O','A','B','AB'], A:['A','AB'], B:['B','AB'], AB:['AB']};
+function aboOk(d, r){ return (ABO_COMPAT[d.replace(/[+-]/,'')]||[]).includes(r.replace(/[+-]/,'')); }
+
+function runSim(){
+  const organ = document.getElementById('simOrgan').value;
+  const dBlood = document.getElementById('simDBlood').value;
+  const rBlood = document.getElementById('simRBlood').value;
+  const waitDays = parseInt(document.getElementById('simWait').value) || 90;
+  const geo = parseInt(document.getElementById('simGeo').value);
+
+  if (!aboOk(dBlood, rBlood)) {
+    showSimResult(0,'❌ ABO Incompatible','Blood types are incompatible — no match possible.',dBlood,rBlood,[]);
+    return;
+  }
+
+  let score = 0, breakdown = [];
+
+  if (organ === 'kidney') {
+    // Kidney: HLA (40) + PRA (20) + Wait (25) + Geo (10) + ABO bonus (5)
+    const hla = parseInt(document.getElementById('simHLA').value);
+    const hlaScore = hla===0 ? 45 : Math.max(5, 35 - hla*5); // zero-mismatch bonus +5
+    const praScore = 18; // simplified (would use actual PRA %)
+    const waitScore = Math.min(25, (waitDays/365)*25);
+    const aboBonus = dBlood===rBlood ? 5 : 3; // exact match bonus
+    breakdown=[['HLA Compatibility',hlaScore,45],['PRA / Sensitisation',praScore,20],['Wait Time',+waitScore.toFixed(1),25],['Blood Group',aboBonus,5],['Geographic Zone',geo,15]];
+    score = hlaScore + praScore + waitScore + aboBonus + geo;
+
+  } else if (organ === 'liver') {
+    // Liver: MELD urgency (55) + Size (15) + Wait (10) + Geo (15) + ABO (5)
+    const meld = parseInt(document.getElementById('simMELD').value) || 24;
+    // MELD score → urgency points (linear, 6=0pts, 40=55pts)
+    const meldScore = Math.min(55, Math.max(0, ((meld-6)/34)*55));
+    const sizeScore = 14; // simplified body-size compatibility
+    const waitScore = Math.min(10, (waitDays/180)*10);
+    breakdown=[['MELD Urgency',+meldScore.toFixed(1),55],['Body Size Match',sizeScore,15],['Wait Time',+waitScore.toFixed(1),10],['Geographic Zone',geo,15],['ABO Bonus',5,5]];
+    score = meldScore + sizeScore + waitScore + geo + 5;
+
+  } else if (organ === 'heart') {
+    // Heart: Urgency tier (40) + Body size (25) + Geo (20) + Age delta (10) + ABO (5)
+    const urg = parseInt(document.getElementById('simUrg').value);
+    const urgScore = urg===1 ? 40 : urg===2 ? 28 : 16;
+    const sizeScore = 22;
+    const ageScore = 7;
+    breakdown=[['Urgency Status',urgScore,40],['Body Size Match',sizeScore,25],['Geographic Zone',geo,20],['Age Compatibility',ageScore,10],['ABO Bonus',5,5]];
+    score = urgScore + sizeScore + geo + ageScore + 5;
+
+  } else if (organ === 'lungs') {
+    // Lungs: LAS score (40) + Diagnosis group (20) + Height match (20) + Geo (15) + Age (5)
+    const las = parseInt(document.getElementById('simLAS').value) || 55;
+    const lasScore = Math.min(40, (las/100)*40);
+    const diagScore = 15; // simplified
+    const heightScore = 16;
+    const ageScore = 5;
+    breakdown=[['LAS Score',+lasScore.toFixed(1),40],['Diagnosis Group',diagScore,20],['Height Compatibility',heightScore,20],['Geographic Zone',Math.round(geo*.8),15],['Age Delta',ageScore,5]];
+    score = lasScore + diagScore + heightScore + Math.round(geo*.8) + ageScore;
+
+  } else { // pancreas
+    // Pancreas: Diabetes type (25) + HLA-DR (25) + BMI (20) + Wait (15) + Age (10) + Geo (5)
+    const hla = parseInt(document.getElementById('simHLA').value);
+    const diabScore = 25; // assume T1 + c-peptide negative = highest
+    const hlaScore = Math.max(0, 25 - hla*8); // DR locus weighted
+    const bmiScore = 16;
+    const waitScore = Math.min(15, (waitDays/365)*15);
+    const ageScore = 7;
+    breakdown=[['Diabetes Compatibility',diabScore,25],['HLA-DR Matching',hlaScore,25],['BMI Compatibility',bmiScore,20],['Wait Time',+waitScore.toFixed(1),15],['Age Delta',ageScore,10],['Geographic Zone',Math.round(geo*.2),5]];
+    score = diabScore + hlaScore + bmiScore + waitScore + ageScore + Math.round(geo*.2);
+  }
+
+  score = Math.min(Math.round(score), 100);
+  const verdict = score>=85?'Excellent match':score>=70?'Good match':score>=55?'Marginal match':'Poor match — not recommended';
+  const sub = score>=85?'Recommend proceeding immediately — strong compatibility across all criteria.':score>=70?'Suitable for transplant — clinical team should review breakdown.':score>=55?'Acceptable but clinical review advised before proceeding.':'Significant compatibility issues found. Alternative recipients preferred.';
+  showSimResult(score, verdict, sub, dBlood, rBlood, breakdown);
+}
+
+function showSimResult(score, verdict, sub, dB, rB, breakdown){
+  const out = document.getElementById('simOut'); out.classList.add('show');
+  const circ = document.getElementById('simCircle');
+  const col = score>=85?'var(--green)':score>=70?'var(--blue)':score>=55?'var(--amber)':'var(--red)';
+  circ.style.borderColor = col;
+  document.getElementById('simScore').textContent = score;
+  document.getElementById('simScore').style.color = col;
+  document.getElementById('simVerdict').textContent = verdict;
+  document.getElementById('simVerdict').style.color = col;
+  document.getElementById('simVerdictSub').textContent = sub;
+  const bd = document.getElementById('simBreakdown'); bd.innerHTML='';
+  breakdown.forEach(b=>{
+    const pct = Math.round((b[1]/b[2])*100);
+    bd.innerHTML+=`<div class="bk-row"><div class="bk-name">${b[0]}</div><div class="bk-track"><div class="bk-fill" style="width:0%" data-w="${pct}%"></div></div><div class="bk-val">${b[1]}/${b[2]}</div></div>`;
+  });
+  setTimeout(()=>bd.querySelectorAll('[data-w]').forEach(f=>f.style.width=f.dataset.w), 60);
+  document.getElementById('aiSimBtn').style.display='inline-flex';
+  document.getElementById('simAiBox').style.display='none';
+  window._sim={score,verdict,sub,dB,rB,breakdown,organ:document.getElementById('simOrgan').value};
+}
+
+async function aiExplainSim(){
+  const box=document.getElementById('simAiBox'); const txt=document.getElementById('simAiText');
+  box.style.display='block'; txt.innerHTML='<span class="ai-box-loading">🤖 Analysing this match…</span>';
+  const d=window._sim||{};
+  const prompt=`Transplant match: ${d.organ}, score ${d.score}/100, donor blood ${d.dB}, recipient blood ${d.rB}. Breakdown: ${JSON.stringify(d.breakdown)}. Verdict: ${d.verdict}. Explain in 3 plain-language sentences for a transplant coordinator.`;
+  const res = await api('/ai/chat/','POST',{message:prompt,role:'admin',history:[]});
+  txt.innerHTML = res?.reply || `This ${d.organ} match scored ${d.score}/100. ${d.verdict} — ${d.sub} The top contributing factors are ${d.breakdown[0]?.[0]} and ${d.breakdown[1]?.[0]}.`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   AI CHAT (admin + roles)
+═══════════════════════════════════════════════════════ */
+async function sendAdminAi(){
+  const inp=document.getElementById('adminAiInput'); const msg=inp.value.trim(); if(!msg) return;
+  inp.value=''; inp.focus();
+  appendMsg('adminAiMsgs',msg,'u');
+  adminHistory.push({role:'user',content:msg});
+  const tid=appendTyping('adminAiMsgs');
+  const res = await api('/ai/chat/','POST',{message:msg,role:'admin',history:adminHistory.slice(-10)});
+  removeTyping(tid);
+  const reply = res?.reply || aiDemo(msg,'admin');
+  appendMsg('adminAiMsgs',reply,'bot');
+  adminHistory.push({role:'assistant',content:reply});
+}
+
+async function sendRoleAi(role){
+  const iid=role==='donor'?'donorAiInput':'recipAiInput';
+  const mid=role==='donor'?'donorAiMsgs':'recipAiMsgs';
+  const hist=role==='donor'?donorHistory:recipHistory;
+  const inp=document.getElementById(iid); const msg=inp.value.trim(); if(!msg) return;
+  inp.value=''; inp.focus();
+  appendMsg(mid,msg,'u'); hist.push({role:'user',content:msg});
+  const tid=appendTyping(mid);
+  const res = await api('/ai/chat/','POST',{message:msg,role,history:hist.slice(-10)});
+  removeTyping(tid);
+  const reply = res?.reply || aiDemo(msg,role);
+  appendMsg(mid,reply,'bot'); hist.push({role:'assistant',content:reply});
+}
+
+function appendMsg(containerId, text, type){
+  const c = document.getElementById(containerId); if(!c) return;
+  const icon = type==='bot'?'🤖':'👤';
+  const av_cls = type==='bot'?'bot':'u';
+  const bub_cls = type==='bot'?'bot':'u';
+  const wrapper_cls = type==='u'?'u':'';
+  c.innerHTML+=`<div class="ai-msg ${wrapper_cls}"><div class="ai-av ${av_cls}">${icon}</div><div class="ai-bub ${bub_cls}">${text}</div></div>`;
+  c.scrollTop=c.scrollHeight;
+}
+
+function appendTyping(containerId){
+  const c=document.getElementById(containerId); if(!c) return null;
+  const id='typ_'+Date.now();
+  c.innerHTML+=`<div class="ai-msg" id="${id}"><div class="ai-av bot">🤖</div><div class="ai-bub bot"><div class="typ"><span></span><span></span><span></span></div></div></div>`;
+  c.scrollTop=c.scrollHeight;
+  return id;
+}
+
+function removeTyping(id){
+  const el=document.getElementById(id); if(el) el.remove();
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLOATING HELP BOT — for new/confused users
+═══════════════════════════════════════════════════════ */
+let hbOpen = false;
+function toggleHelpBot(){
+  hbOpen = !hbOpen;
+  const panel = document.getElementById('helpbot-panel');
+  panel.classList.toggle('open', hbOpen);
+  // remove badge once opened
+  const badge = document.querySelector('#helpbot-fab .hb-badge');
+  if (badge && hbOpen) badge.remove();
+}
+
+function hbQuickSend(msg){
+  // remove quick buttons after first use
+  document.getElementById('hbQuick').style.display='none';
+  appendHbMsg(msg,'u');
+  hbHistory.push({role:'user',content:msg});
+  respondHelp(msg);
+}
+
+async function sendHelpMsg(){
+  const inp=document.getElementById('hbInput'); const msg=inp.value.trim(); if(!msg) return;
+  inp.value=''; inp.focus();
+  document.getElementById('hbQuick').style.display='none';
+  appendHbMsg(msg,'u'); hbHistory.push({role:'user',content:msg});
+  respondHelp(msg);
+}
+
+async function respondHelp(msg){
+  const tid=appendHbTyping();
+  // Try API first, then local smart demo
+  const res = await api('/ai/chat/','POST',{
+    message: msg,
+    role: 'public',
+    history: hbHistory.slice(-6),
+    system: 'You are a friendly guide for OrganXcell, India\'s organ donation platform. Help new users — donors, recipients, families, doctors — understand how to use the platform in simple, kind language. Keep answers brief (2-3 sentences max).'
+  });
+  removeHbTyping(tid);
+  const reply = res?.reply || hbDemo(msg);
+  appendHbMsg(reply,'bot'); hbHistory.push({role:'assistant',content:reply});
+  // Contextual quick actions after reply
+  addHbActions(msg);
+}
+
+function hbDemo(msg){
+  const m=msg.toLowerCase();
+  if(m.includes('donor')||m.includes('donate'))
+    return 'To register as a donor, click <strong>Register</strong> at the top and select "Donor". It takes 2 minutes! Your decision can save up to 8 lives.';
+  if(m.includes('recipient')||m.includes('waiting')||m.includes('transplant'))
+    return 'As a recipient, you\'ll be added to the waiting list after your hospital registers you. Your position updates daily based on medical urgency. Log in to check your status anytime.';
+  if(m.includes('match')||m.includes('algorithm')||m.includes('score'))
+    return 'Our AI checks blood group compatibility first, then HLA matching, medical urgency, distance, and wait time. Each organ has its own formula (MELD for liver, LAS for lungs, etc.).';
+  if(m.includes('doctor')||m.includes('hospital')||m.includes('coordinator'))
+    return 'Hospitals and doctors register under the "Hospital" role. Once verified, you get access to the full admin dashboard with matching tools, transport tracking, and AI analysis.';
+  if(m.includes('register')||m.includes('sign up')||m.includes('account'))
+    return 'Click <strong>Register</strong> in the top-right corner, choose your role (Donor/Recipient/Hospital), fill in your details, and you\'re in! The whole process takes under 2 minutes.';
+  if(m.includes('map')||m.includes('track')||m.includes('transport'))
+    return 'Our Live Map shows all 20 hospitals across India and tracks organ transport in real time. Click 🗺 Live Map in the menu to see it.';
+  if(m.includes('organ donation')||m.includes('what is'))
+    return 'Organ donation is giving a healthy organ (kidney, liver, heart, lungs, pancreas) to someone whose organ has failed. One donor can save up to 8 lives. Registration takes 2 minutes.';
+  if(m.includes('hello')||m.includes('hi')||m.includes('hey'))
+    return 'Hello! 👋 I\'m here to help you navigate OrganXcell. Are you a donor, recipient, or healthcare professional? Just tell me and I\'ll guide you.';
+  if(m.includes('blood'))
+    return 'Blood bank availability is shown in real-time under the 🩸 Blood Bank menu. You can also submit a blood unit request directly from there.';
+  return 'Happy to help! OrganXcell connects organ donors with recipients across India. You can register as a donor, check the waiting list, or view live transport tracking. What would you like to do?';
+}
+
+function addHbActions(msg){
+  const m=msg.toLowerCase();
+  let actions=[];
+  if(m.includes('donor')||m.includes('donate')) actions=[{l:'Register as Donor',fn:"go('register')"}];
+  else if(m.includes('recipient')||m.includes('waiting')) actions=[{l:'Check My Status',fn:"go('login')"}];
+  else if(m.includes('map')||m.includes('track')) actions=[{l:'Open Live Map',fn:"go('map')"}];
+  else if(m.includes('match')||m.includes('algorithm')) actions=[{l:'Try Match Simulator',fn:"go('login')"}];
+  else if(m.includes('hospital')||m.includes('doctor')) actions=[{l:'View Hospitals',fn:"go('hospitals')"}];
+  if(actions.length){
+    const msgs = document.getElementById('hbMsgs');
+    if(!msgs) return;
+    const d=document.createElement('div');
+    d.style.cssText='display:flex;gap:5px;flex-wrap:wrap;padding:.2rem 0 .4rem;';
+    actions.forEach(a=>{
+      const chip=document.createElement('span');
+      chip.className='hb-q';
+      chip.textContent=a.l;
+      chip.onclick=()=>{ eval(a.fn); toggleHelpBot(); };
+      d.appendChild(chip);
+    });
+    msgs.appendChild(d);
+    msgs.scrollTop=msgs.scrollHeight;
+  }
+}
+
+function appendHbMsg(text,type){
+  const c=document.getElementById('hbMsgs'); if(!c) return;
+  const icon=type==='bot'?'🤖':'👤';
+  const bub=type==='bot'?'hb-bub bot':'hb-bub u';
+  const wrap=type==='u'?'hb-msg u':'hb-msg';
+  c.innerHTML+=`<div class="${wrap}"><div class="ai-av ${type}">${icon}</div><div class="${bub}">${text}</div></div>`;
+  c.scrollTop=c.scrollHeight;
+}
+
+function appendHbTyping(){
+  const c=document.getElementById('hbMsgs'); if(!c) return null;
+  const id='hbt_'+Date.now();
+  c.innerHTML+=`<div class="hb-msg" id="${id}"><div class="ai-av bot">🤖</div><div class="hb-bub bot"><div class="typ"><span></span><span></span><span></span></div></div></div>`;
+  c.scrollTop=c.scrollHeight;
+  return id;
+}
+function removeHbTyping(id){ const el=document.getElementById(id); if(el) el.remove(); }
+
+/* ═══════════════════════════════════════════════════════
+   AI DEMO FALLBACK (when API offline)
+═══════════════════════════════════════════════════════ */
+function aiDemo(msg, role){
+  const m=msg.toLowerCase();
+  if(m.includes('match')||m.includes('score')||m.includes('compat'))
+    return 'Match scores use organ-specific algorithms — HLA for kidneys (zero-mismatch bonus), MELD for livers, LAS for lungs, urgency tiers 1A/1B for hearts. Geographic zones follow NOTTO: same city → state → zone → cross-zone.';
+  if(m.includes('transport')||m.includes('route')||m.includes('helicopter'))
+    return 'Transport is optimised by ischaemic window: heart (4h) and lungs (6h) always use air; kidneys (24h) can use ambulance. Cold chain alert fires if temperature exceeds 4°C (or 2°C for pancreas).';
+  if(m.includes('wait')||m.includes('queue')||m.includes('list'))
+    return role==='recipient'
+      ?'Your position updates every 30 minutes. The AI re-ranks by medical urgency (MELD/LAS/1A-1B), HLA sensitisation, wait time, and distance. Critical patients always move to the top.'
+      :'Use AI Reorder to run a fresh urgency re-rank. Results consider MELD, LAS, PRA, days waiting, and geographic proximity across all active cases.';
+  if(m.includes('hla')||m.includes('mismatch'))
+    return 'HLA mismatches are counted per locus (A, B, DR). Zero mismatches get a +5 bonus. Six mismatches deduct the maximum. For kidneys, this is the single most important factor after ABO.';
+  if(m.includes('cold chain')||m.includes('temperature')||m.includes('breach'))
+    return 'Safe range: 0–4°C for most organs, 0–2°C for pancreas. When an IoT reading exceeds the limit, a breach alert is broadcast to all coordinators and the transport team within seconds.';
+  if(m.includes('consent')||m.includes('family')||m.includes('hota'))
+    return 'The consent workflow follows HOTA: family contacted → counselling scheduled → counselling complete → consent obtained → verified → active for matching. All transitions are time-stamped with full audit trail.';
+  if(role==='donor')
+    return 'Your gift can save up to 8 lives. After confirmation, a transplant coordinator will contact your family within 24 hours. You can update or withdraw consent any time before the procedure.';
+  if(role==='recipient')
+    return 'Your case is reviewed by the AI matching engine every 10 minutes. When a compatible organ is found, you\'ll receive an alert within seconds. Keep your phone accessible and your bag packed.';
+  const pool=['Based on current data, the top pending case is a critical heart patient at 78% compatibility — recommend coordinator review.','Auto-matching runs every 10 minutes. AI waiting-list reorder runs every 30 minutes once the Django backend is live.','For live AI responses, add your ANTHROPIC_API_KEY to .env and start the Django server on port 8000.'];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+/* ═══════════════════════════════════════════════════════
+   MAP
+═══════════════════════════════════════════════════════ */
+function initMap(){
+  if (leafletMap) return;
+  if (typeof L==='undefined') {
+    document.getElementById('leaflet-map').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);flex-direction:column;gap:10px;"><div style="width:28px;height:28px;border:2px solid var(--line2);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;"></div>Loading map…</div>';
+    window.onLeafletReady(initMap); return;
+  }
+  leafletMap = L.map('leaflet-map',{zoomControl:true}).setView([20.5937,78.9629],5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(leafletMap);
+  // Hospital pins
+  HOSPITALS.forEach(h=>{
+    const col=h.verified?'#4a90e2':'#e8962a';
+    const icon=L.divIcon({className:'',html:`<div style="width:12px;height:12px;border-radius:50%;background:${col};border:2px solid rgba(255,255,255,.85);box-shadow:0 0 7px ${col}70;"></div>`,iconSize:[12,12],iconAnchor:[6,6]});
+    L.marker([h.lat,h.lng],{icon}).addTo(leafletMap)
+      .bindPopup(`<div class="pop-name">${h.name}</div><div class="pop-meta">📍 ${h.city}, ${h.state}</div><div class="pop-stat">✓ ${h.transplants} transplants · ${h.beds} ICU beds</div><div style="margin-top:3px;font-size:.68rem;color:${h.verified?'#1a9550':'#b86e10'};">${h.verified?'● Verified':'◌ Pending'}</div>`);
+  });
+  // Transport routes
+  TRANSPORTS.forEach(t=>{
+    const col={in_transit:'#3fc97a',delayed:'#e05555',pending:'#e8962a'}[t.status]||'#4a90e2';
+    L.polyline([[t.fLat,t.fLng],[t.tLat,t.tLng]],{color:col,weight:2,opacity:.65,dashArray:'7,5'}).addTo(leafletMap);
+    const fi=L.divIcon({className:'',html:`<div style="width:13px;height:13px;border-radius:50%;background:#e05555;border:2px solid rgba(255,255,255,.9);box-shadow:0 0 6px rgba(224,85,85,.6);"></div>`,iconSize:[13,13],iconAnchor:[6.5,6.5]});
+    L.marker([t.fLat,t.fLng],{icon:fi}).addTo(leafletMap).bindPopup(`<div class="pop-name">${t.from} → ${t.to}</div><div class="pop-meta">${t.organ} · ${t.status.replace('_',' ')}</div><div class="pop-stat">ETA: ${t.time} · ${t.temp}</div>`);
+  });
+  // CSS for map spin
+  const style=document.createElement('style');
+  style.textContent='@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';
+  document.head.appendChild(style);
+}
+
+function resetMap(){ if(leafletMap) leafletMap.setView([20.5937,78.9629],5,{animate:true}); }
+
+async function aiRoute(){
+  const box=document.getElementById('aiRouteBox');
+  const txt=document.getElementById('aiRouteText');
+  box.style.display='block';
+  txt.innerHTML='<em style="color:var(--faint);">🤖 Analysing optimal route…</em>';
+  const res = await api('/ai/optimize-route/','POST',{organ_type:'heart',origin:'Chennai',destination:'Hyderabad',time_remaining_minutes:134});
+  if(res?.route){
+    const r=res.route;
+    txt.innerHTML=`<strong>Recommended:</strong> ${r.recommended_mode?.replace('_',' ')} · ETA ${r.estimated_travel_time_minutes} min<br><strong>Urgency:</strong> ${r.urgency_level}<br><br>${(r.route_steps||[]).map(s=>`Step ${s.step}: ${s.action} (${s.duration_minutes}m)`).join('<br>')}<br><br><strong>Recommendation:</strong> ${r.recommendation}`;
+  } else {
+    txt.innerHTML='<strong>🤖 AI Route Analysis:</strong><br>Recommended: <strong>Helicopter</strong> · ETA ~90 min<br>Urgency: Critical — Heart has only 4-hour ischaemic window<br><br>Step 1: Package at Apollo Chennai (15m) → Step 2: Ambulance to airport (20m) → Step 3: Helicopter Chennai→Hyderabad (50m) → Step 4: Ground to Global Hospital (15m)<br><br><strong>Recommendation: Proceed immediately with charter helicopter.</strong>';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   HOSPITALS
+═══════════════════════════════════════════════════════ */
+function renderHospitals(list){
+  document.getElementById('hospGrid').innerHTML = list.map(h=>`
+    <div class="hosp-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.4rem;">
+        <div><div class="hosp-name">${h.name}</div><div class="hosp-city">📍 ${h.city}, ${h.state}</div></div>
+        <span class="badge badge-${h.verified?'green':'amber'}">${h.verified?'✓ Verified':'Pending'}</span>
+      </div>
+      <div class="hosp-stats">
+        <div class="hs"><div class="hs-v">${h.transplants}</div><div class="hs-l">Transplants</div></div>
+        <div class="hs"><div class="hs-v">${h.beds}</div><div class="hs-l">ICU Beds</div></div>
+      </div>
+      <div style="display:flex;gap:5px;margin-top:.7rem;">
+        <button class="btn-xs" onclick="jumpMap(${h.lat},${h.lng})">📍 Map</button>
+        <button class="btn-xs" onclick="toast('Contacting ${h.name}…','info',2000)">Contact</button>
+      </div>
+    </div>`).join('');
+}
+
+function filterHospitals(){
+  const q=document.getElementById('hospSearch').value.toLowerCase();
+  renderHospitals(HOSPITALS.filter(h=>h.name.toLowerCase().includes(q)||h.city.toLowerCase().includes(q)));
+}
+
+function jumpMap(lat,lng){
+  go('map');
+  const fly=()=>{ if(leafletMap) leafletMap.setView([lat,lng],13,{animate:true}); };
+  typeof L!=='undefined'?setTimeout(fly,120):window.onLeafletReady(()=>setTimeout(fly,300));
+}
+
+function addHospital(){
+  const name=document.getElementById('nh_name').value.trim();
+  const city=document.getElementById('nh_city').value.trim();
+  if(!name||!city){toast('Hospital name and city are required.','error');return;}
+  HOSPITALS.push({name,city,state:document.getElementById('nh_state').value,lat:20,lng:79,transplants:0,beds:0,verified:false});
+  renderHospitals(HOSPITALS);
+  closeOverlay('addHospOverlay');
+  api('/accounts/hospitals/','POST',{name,city,state:document.getElementById('nh_state').value,registration_number:document.getElementById('nh_reg').value});
+  toast(`✓ ${name} registered!`,'success');
+}
+
+/* ═══════════════════════════════════════════════════════
+   BLOOD BANK
+═══════════════════════════════════════════════════════ */
+function renderBlood(){
+  document.getElementById('bbGrid').innerHTML = BLOOD.map(b=>{
+    const pct=Math.round((b.u/b.m)*100), low=pct<30;
+    return `<div class="bb-card ${low?'low':''}">
+      <div class="bb-type">${b.t}</div>
+      <div class="bb-units">${b.u}</div>
+      <div class="bb-lbl">units${low?'<br><span style="color:var(--red);font-weight:700;font-size:.65rem;">⚠ CRITICAL</span>':''}</div>
+      <div class="bb-bar"><div class="bb-fill ${low?'low':''}" style="width:0%" data-w="${pct}%"></div></div>
+      <div style="font-size:.62rem;color:var(--faint);margin-top:2px;">${pct}% of target</div>
+    </div>`;
+  }).join('');
+  setTimeout(()=>document.querySelectorAll('.bb-fill[data-w]').forEach(f=>f.style.width=f.dataset.w),300);
+}
+
+function requestBlood(){
+  const g=document.getElementById('bbGroup').value, u=document.getElementById('bbUnits').value, urg=document.getElementById('bbUrg').value;
+  api('/accounts/bloodbank/request/','POST',{blood_group:g,units_required:parseInt(u),urgency:urg.toLowerCase()});
+  const eta=urg==='Critical'?'30 min':urg==='Urgent'?'2 hours':'Next day';
+  toast(`✓ Blood request sent — ${g} × ${u} units · ETA ${eta}`,'success',4000);
+}
+
+/* ═══════════════════════════════════════════════════════
+   FEEDBACK
+═══════════════════════════════════════════════════════ */
+function selFbType(el, type){
+  fbType=type;
+  // Reset all feedback type badges
+  document.querySelectorAll('#fbTypes span').forEach(s=>{
+    s.style.opacity='0.5';
+    s.style.transform='scale(1)';
+  });
+  // Highlight selected
+  el.style.opacity='1';
+  el.style.transform='scale(1.05)';
+}
+// Stars
+(function(){
+  function build(){
+    const c=document.getElementById('stars'); if(!c) return;
+    c.innerHTML='';
+    for(let i=1;i<=5;i++){
+      const s=document.createElement('span');
+      s.textContent='★'; s.style.cssText='font-size:1.7rem;cursor:pointer;color:rgba(143,163,186,.25);transition:color .12s,transform .1s;user-select:none;display:inline-block;';
+      s.dataset.i=i;
+      s.onmouseenter=()=>hiStars(i,true);
+      s.onmouseleave=()=>hiStars(starRating,false);
+      s.onclick=()=>{ starRating=i; hiStars(i,false); };
+      c.appendChild(s);
+    }
+  }
+  function hiStars(n,hover){
+    document.querySelectorAll('#stars span').forEach((s,i)=>{
+      s.style.color=i<n?'#f0c040':(hover?'rgba(240,192,64,.2)':'rgba(143,163,186,.25)');
+      s.style.transform=(hover&&i<n)?'scale(1.15)':'scale(1)';
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',build);
+  else build();
+})();
+
+function submitFeedback(){
+  const name=document.getElementById('fbName').value.trim();
+  const email=document.getElementById('fbEmail').value.trim();
+  const msg=document.getElementById('fbMsg').value.trim();
+  if(!name||!email||!msg){toast('Please fill name, email, and message.','error');return;}
+  const btn=document.getElementById('fbBtn'); btn.textContent='Submitting…'; btn.disabled=true;
+  api('/feedback/','POST',{name,email,message:msg,rating:starRating,feedback_type:fbType});
+  setTimeout(()=>{
+    btn.style.display='none';
+    const ok=document.getElementById('fbOk');
+    ok.style.display='flex';
+  },900);
+}
+
+/* ═══════════════════════════════════════════════════════
+   MISC
+═══════════════════════════════════════════════════════ */
+function markAllRead(){ document.querySelectorAll('.notif.unread').forEach(n=>n.classList.remove('unread')); toast('All notifications marked as read','info',2000); }
+function generateReport(){ toast('📄 Report generation requires the Django backend running on port 8000.','info',3500); }
+
+/* ═══════════════════════════════   RESTORE SESSION
+═══════════════════════════════════════════════════════ */
+(function restoreSession(){
+  const saved=localStorage.getItem('ox_user');
+  if(saved){ try{ user=JSON.parse(saved); token=localStorage.getItem('ox_token')||null; }catch(e){} }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+databases:
+  - name: organxcell-db
+    databaseName: organxcell
+    user: organxcell
+    plan: free
+
+services:
+  # ── Redis ──
+  - type: redis
+    name: organxcell-redis
+    plan: free
+    maxmemoryPolicy: noeviction
+
+  # ── Django Web (ASGI) ──
+  - type: web
+    name: organxcell-web
+    env: python
+    plan: free
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate --noinput
+    startCommand: daphne -b 0.0.0.0 -p $PORT organxcell.asgi:application
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: organxcell-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: organxcell-redis
+          type: redis
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false     # you fill this in Render dashboard
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
+  # ── Celery Worker ──
+  - type: worker
+    name: organxcell-worker
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A organxcell worker --loglevel=info --concurrency=2
+    envVars:
+      - key: SECRET_KEY
+        fromService:
+          name: organxcell-web
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: organxcell-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: organxcell-redis
+          type: redis
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false
