@@ -2,7 +2,7 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "daphne -b 0.0.0.0 -p $PORT organxcell.asgi:application"
+startCommand = "sh -c "daphne -b 0.0.0.0 -p ${PORT:-8000} organxcell.asgi:application""
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
